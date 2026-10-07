@@ -1,0 +1,25 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+dotnet-tools.json
+
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+.idea/
+app/build/
+build/
+*.apk
+*.aab
+
+# Python verify helper
+__pycache__/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
