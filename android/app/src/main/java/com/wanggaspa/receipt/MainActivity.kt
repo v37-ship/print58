@@ -33,7 +33,8 @@ fun CashierScreen() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var customer by remember { mutableStateOf("Mama Isaac") }
-    var promo by remember { mutableStateOf("08131006650") }
+    var nomorHp by remember { mutableStateOf("") }
+    var promo by remember { mutableStateOf("") }
     var itemsText by remember { mutableStateOf("Massage Kids | Durasi 60 menit | 135000\nInflaren | Durasi 30 menit | 50000\nTransport PP (HM Care) | Jarak & antar jemput | 15000") }
     var pay by remember { mutableStateOf("LUNAS Qris") }
     var preview by remember { mutableStateOf("") }
@@ -52,7 +53,7 @@ fun CashierScreen() {
             StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-            customer, promo, sdf.format(now), stf.format(now) + " WIB",
+            customer, nomorHp, promo, sdf.format(now), stf.format(now) + " WIB",
             items, total, total, pay,
             listOf("TERIMA KASIH ATAS KUNJUNGAN ANDA",
                 "Kesehatan & Kebugaran Prioritas Kami",
@@ -63,7 +64,8 @@ fun CashierScreen() {
     Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState())) {
         Text("WANGGA SPA — Kasir", style = MaterialTheme.typography.headlineSmall)
         OutlinedTextField(customer, { customer = it }, label = { Text("Pelanggan") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(promo, { promo = it }, label = { Text("Promo (HP)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(nomorHp, { nomorHp = it }, label = { Text("Nomor HP") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(promo, { promo = it }, label = { Text("Promo (kode, boleh kosong)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(itemsText, { itemsText = it }, label = { Text("Layanan | Deskripsi | Harga") },
             modifier = Modifier.fillMaxWidth().height(140.dp))
         OutlinedTextField(pay, { pay = it }, label = { Text("Status Pembayaran") }, modifier = Modifier.fillMaxWidth())

@@ -6,7 +6,8 @@ public sealed record StoreInfo(string Name, string Tagline, string Address, stri
 public sealed record Receipt(
     StoreInfo Store,
     string Customer,
-    string PromoPhone,
+    string CustomerPhone,
+    string PromoCode,
     string Date,
     string Time,
     List<ReceiptItem> Items,

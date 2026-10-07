@@ -38,7 +38,7 @@ public partial class MainWindow : Window
             new StoreInfo("WANGGA SPA", "Sehat • Relaks • Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-            CustomerBox.Text.Trim(), PromoBox.Text.Trim(),
+            CustomerBox.Text.Trim(), CustomerPhoneBox.Text.Trim(), PromoBox.Text.Trim(),
             now.ToString("dd/MM/yyyy"), now.ToString("HH:mm") + " WIB",
             items, total, total,
             ((System.Windows.Controls.ComboBoxItem)PayBox.SelectedItem).Content.ToString()!,

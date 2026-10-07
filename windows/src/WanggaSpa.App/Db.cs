@@ -17,11 +17,15 @@ public sealed class Db
             CREATE TABLE IF NOT EXISTS services(name TEXT PRIMARY KEY, desc TEXT NOT NULL, price INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS transactions(
               id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, time TEXT NOT NULL,
-              customer TEXT NOT NULL, promo_phone TEXT NOT NULL DEFAULT '',
+              customer TEXT NOT NULL, customer_phone TEXT NOT NULL DEFAULT '',
+              promo_phone TEXT NOT NULL DEFAULT '',
               items_json TEXT NOT NULL, subtotal INTEGER NOT NULL, total INTEGER NOT NULL,
               payment_status TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT NOT NULL);
             """, c).ExecuteNonQuery();
+        // Migration for DBs created by older versions (promo_phone now holds the promo code).
+        try { new SqliteCommand("ALTER TABLE transactions ADD COLUMN customer_phone TEXT NOT NULL DEFAULT ''", c).ExecuteNonQuery(); }
+        catch (SqliteException) { /* column already exists */ }
         foreach (var (k, v) in new Dictionary<string, string> {
             ["store_name"] = "WANGGA SPA",
             ["tagline"] = "Sehat • Relaks • Bahagia",

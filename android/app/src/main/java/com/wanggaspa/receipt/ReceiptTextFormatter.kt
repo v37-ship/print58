@@ -6,6 +6,8 @@ import java.util.Locale
 /** 32-column formatter. Must stay identical to Windows C# version. */
 object ReceiptTextFormatter {
     const val WIDTH = 32
+    /** Footer prints in condensed Font B (ESC M 1), so it allows 42 cols. */
+    const val FOOTER_WIDTH = 42
     fun dash() = "-".repeat(WIDTH)
 
     fun rupiah(v: Long): String {
@@ -34,9 +36,11 @@ object ReceiptTextFormatter {
         return res
     }
 
-    fun center(s: String): String {
-        val out = wrap(s).map { l ->
-            val pad = (WIDTH - l.length) / 2
+    fun center(s: String): String = centerW(s, WIDTH)
+
+    fun centerW(s: String, w: Int): String {
+        val out = wrap(s, w).map { l ->
+            val pad = (w - l.length) / 2
             " ".repeat(maxOf(0, pad)) + l
         }
         return out.joinToString("\n")
@@ -70,7 +74,9 @@ object ReceiptTextFormatter {
         b.add(center(r.store.contact))
         b.add(dash())
         b.add(twoCol("Pelanggan : ${r.customer}", r.date))
-        b.add(twoCol("Promo     : ${r.promoPhone}", r.time))
+        b.add(twoCol("Nomor HP  : ${r.customerPhone}", r.time))
+        if (r.promoCode.isNotBlank())
+            b.add(twoCol("Promo     : ${r.promoCode}", ""))
         b.add(dash())
         b.add(twoCol("Layanan / Produk", "Total"))
         b.add(dash())
@@ -85,7 +91,7 @@ object ReceiptTextFormatter {
         b.add(twoCol("TOTAL AKHIR", rupiah(r.total)))
         b.add(twoCol("Status Pembayaran", r.paymentStatus))
         b.add(dash())
-        for (f in r.footerLines) b.add(center(f))
+        for (f in r.footerLines) b.add(centerW(f, FOOTER_WIDTH))
         return b.joinToString("\n")
     }
 }

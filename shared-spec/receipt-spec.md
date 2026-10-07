@@ -22,7 +22,8 @@ Telp: 08211347294 | IG:          <- centered, wrap
     @wangggasbabymomwoman        <- centered
 --------------------------------
 Pelanggan : Mama Isaac 28/09/2026  <- special two-col, see §3
-Promo     : 08131006650 14:15 WIB  <- special two-col
+Nomor HP  : 08131006650 14:15 WIB  <- special two-col
+Promo     : WELCOME10              <- only when promo code filled
 --------------------------------
 Layanan / Produk           Total
 --------------------------------
@@ -47,9 +48,11 @@ Status Pembayaran      LUNAS Qris
 ## 3. Line rules
 
 - `center(s)`: strip, wrap at 32, center each line.
-- Customer block: two logical rows, each split left/right:
+- Customer block: two or three logical rows:
   - Row1 left = `Pelanggan : <name>`, right = `<date>`
-  - Row2 left = `Promo     : <phone>`, right = `<time>`
+  - Row2 left = `Nomor HP  : <phone>`, right = `<time>`
+  - Row3 (only when promo code non-empty): `Promo     : <code>`, no right column.
+  - Colons align: all labels are 11 chars before the value (`Pelanggan :`, `Nomor HP  :`, `Promo     :`).
   - Render as `left.padEnd(W - right.len) + right`. If left too long, wrap left first onto its own line then render last segment with right. Name truncated at 40 chars.
 - Items: for each item:
   - Line1: `name` (bold) left, `Rp X` right via two-col. If name + price > 32, print name on its own line(s) wrapped, then price right-aligned on next line.
@@ -67,12 +70,14 @@ ALIGN_RGT   1B 61 02
 BOLD_ON     1B 45 01
 BOLD_OFF    1B 45 00
 SIZE_NORMAL 1D 21 00
-SIZE_2X     1D 21 11   (double w+h)
+SIZE_2X     1D 21 11   (double w+h, header store name only)
+FONT_A      1B 4D 00   (normal, 32 cols)
+FONT_B      1B 4D 01   (condensed, 42 cols — footer only)
 FEED n      1B 64 n
 CUT         1D 56 01
 ```
 
-Sequence: INIT → header (CTR, 2X+BOLD store name, NORMAL+BOLD tagline, NORMAL address) → LEFT item/meta rows → CTR footer → FEED 4 → CUT.
+Sequence: INIT → header (CTR, 2X+BOLD store name, NORMAL+BOLD tagline, NORMAL address) → LEFT item/meta rows → CTR footer (Font B + BOLD, wrap/center at 42) → Font A → FEED 4 → CUT.
 
 ## 5. Edge cases
 

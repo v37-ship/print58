@@ -27,7 +27,9 @@ public static class EscPosBuilder
         Add(b, 0x1B, 0x61, 0x00);                 // LEFT
         Line(b, new string('-', 32));
         foreach (var l in ReceiptTextFormatter.TwoCol($"Pelanggan : {r.Customer}", r.Date).Split('\n')) Line(b, l);
-        foreach (var l in ReceiptTextFormatter.TwoCol($"Promo     : {r.PromoPhone}", r.Time).Split('\n')) Line(b, l);
+        foreach (var l in ReceiptTextFormatter.TwoCol($"Nomor HP  : {r.CustomerPhone}", r.Time).Split('\n')) Line(b, l);
+        if (!string.IsNullOrWhiteSpace(r.PromoCode))
+            foreach (var l in ReceiptTextFormatter.TwoCol($"Promo     : {r.PromoCode}", "").Split('\n')) Line(b, l);
         Line(b, new string('-', 32));
         Add(b, 0x1B, 0x45, 0x01);
         foreach (var l in ReceiptTextFormatter.TwoCol("Layanan / Produk", "Total").Split('\n')) Line(b, l);
@@ -54,8 +56,10 @@ public static class EscPosBuilder
         Line(b, new string('-', 32));
 
         Add(b, 0x1B, 0x61, 0x01); Add(b, 0x1B, 0x45, 0x01);
+        Add(b, 0x1B, 0x4D, 0x01);                 // Font B (condensed): footer fits one line each
         foreach (var f in r.FooterLines)
-            foreach (var l in ReceiptTextFormatter.Wrap(f, 32)) Line(b, l);
+            foreach (var l in ReceiptTextFormatter.CenterW(f, ReceiptTextFormatter.FooterWidth).Split('\n')) Line(b, l);
+        Add(b, 0x1B, 0x4D, 0x00);                 // back to Font A
         Add(b, 0x1B, 0x45, 0x00);
         Add(b, 0x1B, 0x64, 0x04);                 // feed 4
         Add(b, 0x1D, 0x56, 0x01);                 // cut

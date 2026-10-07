@@ -4,18 +4,22 @@ namespace WanggaSpa.Receipt;
 public static class ReceiptTextFormatter
 {
     public const int Width = 32;
+    /// <summary>Footer prints in condensed Font B (ESC M 1), so it allows 42 cols.</summary>
+    public const int FooterWidth = 42;
 
     public static string Rupiah(long v) =>
         "Rp " + v.ToString("#,##0", new System.Globalization.CultureInfo("id-ID")).Replace(",", ".");
 
     public static string Dash() => new string('-', Width);
 
-    public static string Center(string s)
+    public static string Center(string s) => CenterW(s, Width);
+
+    public static string CenterW(string s, int w)
     {
-        var lines = Wrap(PrinterSafe(s), Width);
+        var lines = Wrap(PrinterSafe(s), w);
         return string.Join("\n", lines.Select(l =>
         {
-            int pad = (Width - l.Length) / 2;
+            int pad = (w - l.Length) / 2;
             return new string(' ', Math.Max(0, pad)) + l;
         }));
     }
@@ -79,11 +83,15 @@ public static class ReceiptTextFormatter
             Center(r.Store.Contact),
             Dash(),
             TwoCol($"Pelanggan : {r.Customer}", r.Date),
-            TwoCol($"Promo     : {r.PromoPhone}", r.Time),
+            TwoCol($"Nomor HP  : {r.CustomerPhone}", r.Time),
+        };
+        if (!string.IsNullOrWhiteSpace(r.PromoCode))
+            b.Add(TwoCol($"Promo     : {r.PromoCode}", ""));
+        b.AddRange(new[] {
             Dash(),
             TwoCol("Layanan / Produk", "Total"),
             Dash(),
-        };
+        });
         foreach (var it in r.Items)
         {
             b.Add(TwoCol(it.Name, Rupiah(it.Price)));
@@ -96,7 +104,7 @@ public static class ReceiptTextFormatter
         b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.Total)));
         b.Add(TwoCol("Status Pembayaran", r.PaymentStatus));
         b.Add(Dash());
-        foreach (var f in r.FooterLines) b.Add(Center(f));
+        foreach (var f in r.FooterLines) b.Add(CenterW(f, FooterWidth));
         return string.Join("\n", b);
     }
 
@@ -104,7 +112,7 @@ public static class ReceiptTextFormatter
         new StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
             "Kayu Putih II No.32, Pulo Gadung, Jaktim",
             "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-        "Mama Isaac", "08131006650", "28/09/2026", "14:15 WIB",
+        "Mama Isaac", "08131006650", "WELCOME10", "28/09/2026", "14:15 WIB",
         new List<ReceiptItem> {
             new("Massage Kids", "Durasi 60 menit", 135000),
             new("Inflaren", "Durasi 30 menit", 50000),
