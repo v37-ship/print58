@@ -6,21 +6,21 @@ namespace WanggaSpa.App;
 
 public partial class MainWindow : Window
 {
-    readonly BluetoothPrinterService _printer = new();
+    readonly WindowsPrinterService _printer = new();
     ReceiptModel? _current;
 
     public MainWindow()
     {
         InitializeComponent();
-        OnRefreshPorts(null, null);
+        OnRefreshPrinters(null, null);
         OnPreview(null, null);
     }
 
-    void OnRefreshPorts(object? s, RoutedEventArgs? e)
+    void OnRefreshPrinters(object? s, RoutedEventArgs? e)
     {
-        PortBox.ItemsSource = BluetoothPrinterService.ListPorts();
-        if (PortBox.Items.Count > 0) PortBox.SelectedIndex = 0;
-        else StatusText.Text = "COM port tidak ditemukan. Pair EXP583 V2 dulu di Settings > Bluetooth.";
+        PrinterBox.ItemsSource = WindowsPrinterService.ListPrinters();
+        if (PrinterBox.Items.Count == 0)
+            StatusText.Text = "Printer tidak ditemukan. Install driver thermal dulu di Settings > Bluetooth & devices > Printers.";
     }
 
     ReceiptModel BuildReceipt()
@@ -56,10 +56,10 @@ public partial class MainWindow : Window
 
     void OnTestPrint(object? s, RoutedEventArgs? e)
     {
-        if (PortBox.SelectedItem is null) { StatusText.Text = "Pilih COM port dulu."; return; }
+        if (PrinterBox.SelectedItem is null) { StatusText.Text = "Pilih printer dulu."; return; }
         try
         {
-            _printer.Print(PortBox.SelectedItem.ToString()!, EscPosBuilder.Build(ReceiptTextFormatter.Sample()));
+            _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(ReceiptTextFormatter.Sample()));
             StatusText.Text = "Test print terkirim.";
         }
         catch (Exception ex) { StatusText.Text = "Gagal print: " + ex.Message; }
@@ -67,11 +67,11 @@ public partial class MainWindow : Window
 
     void OnPrint(object? s, RoutedEventArgs? e)
     {
-        if (PortBox.SelectedItem is null) { StatusText.Text = "Pilih COM port dulu."; return; }
+        if (PrinterBox.SelectedItem is null) { StatusText.Text = "Pilih printer dulu."; return; }
         try
         {
             OnPreview(null, null);
-            _printer.Print(PortBox.SelectedItem.ToString()!, EscPosBuilder.Build(_current!));
+            _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(_current!));
             StatusText.Text = $"Tercetak + tersimpan. Total {ReceiptTextFormatter.Rupiah(_current!.Total)}.";
         }
         catch (Exception ex) { StatusText.Text = "Gagal print: " + ex.Message; }

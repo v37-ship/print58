@@ -17,10 +17,10 @@
         <ComboBox x:Name="PayBox" Grid.Row="2" Grid.Column="1" Margin="4" SelectedIndex="0">
           <ComboBoxItem>LUNAS Qris</ComboBoxItem><ComboBoxItem>LUNAS Cash</ComboBoxItem><ComboBoxItem>Belum Lunas</ComboBoxItem>
         </ComboBox>
-        <TextBlock Grid.Row="3" Text="COM Port" VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="3" Text="Printer" VerticalAlignment="Center"/>
         <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-          <ComboBox x:Name="PortBox" Width="120" Margin="4"/>
-          <Button Content="Refresh" Click="OnRefreshPorts" Margin="4" Padding="8,2"/>
+          <ComboBox x:Name="PrinterBox" Width="220" Margin="4"/>
+          <Button Content="Refresh" Click="OnRefreshPrinters" Margin="4" Padding="8,2"/>
         </StackPanel>
       </Grid>
       <TextBlock Text="Layanan / Produk (pisahkan deskripsi dengan | )" Margin="0,8,0,2"/>
