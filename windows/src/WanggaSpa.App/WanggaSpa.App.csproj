@@ -10,5 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..\WanggaSpa.Receipt\WanggaSpa.Receipt.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
 </Project>

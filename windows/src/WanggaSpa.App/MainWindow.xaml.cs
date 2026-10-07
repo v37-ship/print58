@@ -1,12 +1,13 @@
 using System.Windows;
 using WanggaSpa.Receipt;
+using ReceiptModel = WanggaSpa.Receipt.Receipt;
 
 namespace WanggaSpa.App;
 
 public partial class MainWindow : Window
 {
     readonly BluetoothPrinterService _printer = new();
-    Receipt? _current;
+    ReceiptModel? _current;
 
     public MainWindow()
     {
@@ -22,7 +23,7 @@ public partial class MainWindow : Window
         else StatusText.Text = "COM port tidak ditemukan. Pair EXP583 V2 dulu di Settings > Bluetooth.";
     }
 
-    Receipt BuildReceipt()
+    ReceiptModel BuildReceipt()
     {
         var now = DateTime.Now;
         var items = new List<ReceiptItem>();
@@ -33,7 +34,7 @@ public partial class MainWindow : Window
             items.Add(new ReceiptItem(p[0].Trim(), p[1].Trim(), long.Parse(p[2].Trim())));
         }
         long total = items.Sum(i => i.Price);
-        return new Receipt(
+        return new ReceiptModel(
             new StoreInfo("WANGGA SPA", "Sehat • Relaks • Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),

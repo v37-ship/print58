@@ -1,3 +1,4 @@
+using System.IO;
 using System.IO.Ports;
 
 namespace WanggaSpa.App;
