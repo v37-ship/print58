@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using WanggaSpa.Receipt;
 using ReceiptModel = WanggaSpa.Receipt.Receipt;
@@ -7,6 +8,9 @@ namespace WanggaSpa.App;
 public partial class MainWindow : Window
 {
     readonly WindowsPrinterService _printer = new();
+    readonly Db _db = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "WanggaSpa", "wangga.db"));
     ReceiptModel? _current;
 
     public MainWindow()
@@ -14,6 +18,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         OnRefreshPrinters(null, null);
         OnPreview(null, null);
+        OnRefreshHistory(null, null);
     }
 
     void OnRefreshPrinters(object? s, RoutedEventArgs? e)
@@ -44,8 +49,8 @@ public partial class MainWindow : Window
             ((System.Windows.Controls.ComboBoxItem)PayBox.SelectedItem).Content.ToString()!,
             new List<string> {
                 "TERIMA KASIH ATAS KUNJUNGAN ANDA",
-                "Kesehatan & Kebugaran Prioritas Kami",
-                "*** Wangga Baby Mom Woman Spa ***" });
+                "Kesehatan & Kebugaran Prioritas",
+                "***Wangga Baby Mom Woman Spa***" });
     }
 
     void OnPreview(object? s, RoutedEventArgs? e)
@@ -72,8 +77,34 @@ public partial class MainWindow : Window
         {
             OnPreview(null, null);
             _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(_current!));
+            _db.InsertTx(new Db.TxRow(0, _current!.Date, _current!.Time, _current!.Customer,
+                _current!.CustomerPhone, _current!.PromoCode,
+                Db.ItemsJson(_current!.Items), _current!.Subtotal, _current!.Total, _current!.PaymentStatus));
+            OnRefreshHistory(null, null);
             StatusText.Text = $"Tercetak + tersimpan. Total {ReceiptTextFormatter.Rupiah(_current!.Total)}.";
         }
         catch (Exception ex) { StatusText.Text = "Gagal print: " + ex.Message; }
+    }
+
+    void OnRefreshHistory(object? s, RoutedEventArgs? e)
+    {
+        try
+        {
+            var rows = _db.AllTx();
+            HistoryGrid.ItemsSource = rows;
+            var today = DateTime.Now.ToString("dd/MM/yyyy");
+            DailyTotalText.Text = $"Hari ini ({today}): {ReceiptTextFormatter.Rupiah(_db.DailyTotal(today))} — {rows.Count} transaksi";
+        }
+        catch (Exception ex) { DailyTotalText.Text = "Gagal baca riwayat: " + ex.Message; }
+    }
+
+    void OnExportCsv(object? s, RoutedEventArgs? e)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog { FileName = "riwayat.csv", Filter = "CSV|*.csv" };
+        if (dlg.ShowDialog() == true)
+        {
+            File.WriteAllText(dlg.FileName, Db.ToCsv(_db.AllTx(100000)));
+            DailyTotalText.Text = "CSV tersimpan: " + dlg.FileName;
+        }
     }
 }

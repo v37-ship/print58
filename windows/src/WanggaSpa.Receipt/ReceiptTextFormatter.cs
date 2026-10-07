@@ -4,8 +4,9 @@ namespace WanggaSpa.Receipt;
 public static class ReceiptTextFormatter
 {
     public const int Width = 32;
-    /// <summary>Footer prints in condensed Font B (ESC M 1), so it allows 42 cols.</summary>
-    public const int FooterWidth = 42;
+
+    public static string PhoneOrDash(string p) =>
+        string.IsNullOrWhiteSpace(p) ? "-" : p.Trim();
 
     public static string Rupiah(long v) =>
         "Rp " + v.ToString("#,##0", new System.Globalization.CultureInfo("id-ID")).Replace(",", ".");
@@ -14,7 +15,7 @@ public static class ReceiptTextFormatter
 
     public static string Center(string s) => CenterW(s, Width);
 
-    public static string CenterW(string s, int w)
+    static string CenterW(string s, int w)
     {
         var lines = Wrap(PrinterSafe(s), w);
         return string.Join("\n", lines.Select(l =>
@@ -83,7 +84,7 @@ public static class ReceiptTextFormatter
             Center(r.Store.Contact),
             Dash(),
             TwoCol($"Pelanggan : {r.Customer}", r.Date),
-            TwoCol($"Nomor HP  : {r.CustomerPhone}", r.Time),
+            TwoCol($"Nomor HP  : {PhoneOrDash(r.CustomerPhone)}", r.Time),
         };
         if (!string.IsNullOrWhiteSpace(r.PromoCode))
             b.Add(TwoCol($"Promo     : {r.PromoCode}", ""));
@@ -104,7 +105,7 @@ public static class ReceiptTextFormatter
         b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.Total)));
         b.Add(TwoCol("Status Pembayaran", r.PaymentStatus));
         b.Add(Dash());
-        foreach (var f in r.FooterLines) b.Add(CenterW(f, FooterWidth));
+        foreach (var f in r.FooterLines) b.Add(Center(f));
         return string.Join("\n", b);
     }
 
@@ -121,6 +122,6 @@ public static class ReceiptTextFormatter
         200000, 200000, "LUNAS Qris",
         new List<string> {
             "TERIMA KASIH ATAS KUNJUNGAN ANDA",
-            "Kesehatan & Kebugaran Prioritas Kami",
-            "*** Wangga Baby Mom Woman Spa ***" });
+            "Kesehatan & Kebugaran Prioritas",
+            "***Wangga Baby Mom Woman Spa***" });
 }

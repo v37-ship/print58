@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 namespace WanggaSpa.App;
@@ -47,4 +48,59 @@ public sealed class Db
         cmd.Parameters.AddWithValue("$k", k);
         return cmd.ExecuteScalar()?.ToString() ?? fb;
     }
+
+    public sealed record TxRow(long Id, string Date, string Time, string Customer,
+        string CustomerPhone, string Promo, string ItemsJson, long Subtotal, long Total, string Pay);
+
+    public void InsertTx(TxRow t)
+    {
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand(
+            "INSERT INTO transactions(date,time,customer,customer_phone,promo_phone,items_json,subtotal,total,payment_status)" +
+            " VALUES($d,$t,$cu,$cp,$pr,$ij,$st,$to,$pa)", c);
+        cmd.Parameters.AddWithValue("$d", t.Date); cmd.Parameters.AddWithValue("$t", t.Time);
+        cmd.Parameters.AddWithValue("$cu", t.Customer); cmd.Parameters.AddWithValue("$cp", t.CustomerPhone);
+        cmd.Parameters.AddWithValue("$pr", t.Promo); cmd.Parameters.AddWithValue("$ij", t.ItemsJson);
+        cmd.Parameters.AddWithValue("$st", t.Subtotal); cmd.Parameters.AddWithValue("$to", t.Total);
+        cmd.Parameters.AddWithValue("$pa", t.Pay);
+        cmd.ExecuteNonQuery();
+    }
+
+    public List<TxRow> AllTx(int limit = 200)
+    {
+        var res = new List<TxRow>();
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand(
+            "SELECT id,date,time,customer,customer_phone,promo_phone,items_json,subtotal,total,payment_status" +
+            " FROM transactions ORDER BY id DESC LIMIT $n", c);
+        cmd.Parameters.AddWithValue("$n", limit);
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read()) res.Add(new TxRow(rd.GetInt64(0), rd.GetString(1), rd.GetString(2),
+            rd.GetString(3), rd.GetString(4), rd.GetString(5), rd.GetString(6),
+            rd.GetInt64(7), rd.GetInt64(8), rd.GetString(9)));
+        return res;
+    }
+
+    public long DailyTotal(string date)
+    {
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand("SELECT COALESCE(SUM(total),0) FROM transactions WHERE date=$d", c);
+        cmd.Parameters.AddWithValue("$d", date);
+        return (long)(cmd.ExecuteScalar() ?? 0L);
+    }
+
+    public static string ToCsv(IEnumerable<TxRow> rows)
+    {
+        var sb = new System.Text.StringBuilder("id,date,time,customer,phone,promo,subtotal,total,payment\n");
+        foreach (var r in rows)
+            sb.Append($"{r.Id},{r.Date},{r.Time},{Csv(r.Customer)},{Csv(r.CustomerPhone)},{Csv(r.Promo)},{r.Subtotal},{r.Total},{Csv(r.Pay)}\n");
+        return sb.ToString();
+        static string Csv(string s) => s.Contains(',') || s.Contains('"') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
+    }
+
+    public static string ItemsJson(List<Receipt.ReceiptItem> items) =>
+        JsonSerializer.Serialize(items.Select(i => new { i.Name, i.Desc, i.Price }));
 }

@@ -27,7 +27,7 @@ object EscPosBuilder {
         bytes(b, 0x1B, 0x61, 0x00)    // LEFT
         line(b, "-".repeat(32))
         ReceiptTextFormatter.twoCol("Pelanggan : ${r.customer}", r.date).split("\n").forEach { line(b, it) }
-        ReceiptTextFormatter.twoCol("Nomor HP  : ${r.customerPhone}", r.time).split("\n").forEach { line(b, it) }
+        ReceiptTextFormatter.twoCol("Nomor HP  : ${ReceiptTextFormatter.phoneOrDash(r.customerPhone)}", r.time).split("\n").forEach { line(b, it) }
         if (r.promoCode.isNotBlank())
             ReceiptTextFormatter.twoCol("Promo     : ${r.promoCode}", "").split("\n").forEach { line(b, it) }
         line(b, "-".repeat(32))
@@ -55,10 +55,8 @@ object EscPosBuilder {
         line(b, "-".repeat(32))
 
         bytes(b, 0x1B, 0x61, 0x01); bytes(b, 0x1B, 0x45, 0x01)
-        bytes(b, 0x1B, 0x4D, 0x01)    // Font B (condensed): footer fits one line each
         for (f in r.footerLines)
-            ReceiptTextFormatter.centerW(f, ReceiptTextFormatter.FOOTER_WIDTH).split("\n").forEach { line(b, it) }
-        bytes(b, 0x1B, 0x4D, 0x00)    // back to Font A
+            ReceiptTextFormatter.center(f).split("\n").forEach { line(b, it) }
         bytes(b, 0x1B, 0x45, 0x00)
         bytes(b, 0x1B, 0x64, 0x04)
         bytes(b, 0x1D, 0x56, 0x01)

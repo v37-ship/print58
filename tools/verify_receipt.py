@@ -2,7 +2,8 @@
 import json, pathlib
 
 WIDTH = 32
-FOOTER_WIDTH = 42
+
+def phone_or_dash(p): return "-" if not p.strip() else p.strip()
 
 def printer_safe(s): return s.replace("•","*").replace("–","-").replace("—","-")
 
@@ -47,7 +48,7 @@ def build_preview(t):
          center(t["store"]["address"]), center(t["store"]["contact"]),
          "-"*WIDTH,
          two_col(f"Pelanggan : {t['customer']}", t["date"]),
-         two_col(f"Nomor HP  : {t['customer_phone']}", t["time"])]
+         two_col(f"Nomor HP  : {phone_or_dash(t.get('customer_phone',''))}", t["time"])]
     if t.get("promo_code", "").strip():
         b.append(two_col(f"Promo     : {t['promo_code'].strip()}", ""))
     b += ["-"*WIDTH, two_col("Layanan / Produk","Total"), "-"*WIDTH]
@@ -58,29 +59,23 @@ def build_preview(t):
           "-"*WIDTH, two_col("TOTAL AKHIR", rupiah(t["total"])),
           two_col("Status Pembayaran", t["payment_status"]),
           "-"*WIDTH]
-    for f in t["footer"]: b.append(center(f, FOOTER_WIDTH))
+    for f in t["footer"]: b.append(center(f))
     return "\n".join(b)
 
 t = json.loads(pathlib.Path("shared-spec/sample-transaction.json").read_text())
 prev = build_preview(t)
 print(prev)
 print("="*WIDTH)
-# assertions: body lines <=32, footer lines <=42, totals consistent
+# assertions: every line <=32, totals consistent
 lines = prev.split("\n")
-body, footer = lines[:-len(t["footer"])*1], None
-# footer may wrap: find dash before footer
-dashes = [i for i,l in enumerate(lines) if l == "-"*WIDTH]
-fstart = dashes[-1] + 1
-assert all(len(l) <= WIDTH for l in lines[:fstart]), "body line too long"
-assert all(len(l) <= FOOTER_WIDTH for l in lines[fstart:]), "footer line too long"
-# each original footer string fits on ONE condensed line
-for f in t["footer"]:
-    assert len(center(f, FOOTER_WIDTH).split("\n")) == 1, f"footer wraps: {f}"
+assert all(len(l) <= WIDTH for l in lines), [l for l in lines if len(l) > WIDTH]
 assert t["subtotal"] == sum(i["price"] for i in t["items"]) == 200000
 assert "WANGGA SPA" in prev and "TOTAL AKHIR" in prev and "Rp 200.000" in prev
 assert "Mama Isaac" in prev and "LUNAS Qris" in prev and "WELCOME10" in prev
-# empty promo -> no Promo line
-t2 = dict(t, promo_code="  ")
-no_promo_block = build_preview(t2).split("14:15 WIB")[1].split("-"*WIDTH)[0]
-assert "Promo" not in no_promo_block, "empty promo must omit line"
-print(f"OK: {len(lines)} lines, body_max={max(len(l) for l in lines[:fstart])}, footer_max={max(len(l) for l in lines[fstart:])}")
+assert "Nomor HP  : 08131006650" in prev
+# empty promo -> no Promo line; empty phone -> dash
+t2 = dict(t, promo_code="  ", customer_phone=" ")
+p2 = build_preview(t2)
+assert "Promo" not in p2.split("Nomor HP")[1].split("-"*WIDTH)[0], "empty promo must omit line"
+assert "Nomor HP  : -" in p2, "empty phone must show dash"
+print(f"OK: {len(lines)} lines, max_len={max(len(l) for l in lines)}")

@@ -29,7 +29,7 @@ fun sampleReceipt() = Receipt(
     200000, 200000, "LUNAS Qris",
     listOf(
         "TERIMA KASIH ATAS KUNJUNGAN ANDA",
-        "Kesehatan & Kebugaran Prioritas Kami",
-        "*** Wangga Baby Mom Woman Spa ***"
+        "Kesehatan & Kebugaran Prioritas",
+        "***Wangga Baby Mom Woman Spa***"
     )
 )
