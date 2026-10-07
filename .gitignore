@@ -6,8 +6,11 @@
 .vs/
 dotnet-tools.json
 
-# Android / Gradle
-.gradle/
+# Build output / publish (exe distributed via GitHub Releases, not git)
+windows/publish/
+windows/**/bin/
+windows/**/obj/
+android/.gradle/
 local.properties
 *.iml
 .idea/
