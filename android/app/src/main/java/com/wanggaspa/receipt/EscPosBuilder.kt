@@ -45,9 +45,10 @@ object EscPosBuilder {
         line(b, "-".repeat(32))
         ReceiptTextFormatter.twoCol("Subtotal", ReceiptTextFormatter.rupiah(r.subtotal)).split("\n").forEach { line(b, it) }
         line(b, "-".repeat(32))
-        bytes(b, 0x1D, 0x21, 0x11); bytes(b, 0x1B, 0x45, 0x01)
+        bytes(b, 0x1B, 0x45, 0x01)
+        // TOTAL AKHIR: bold, normal size (double-size overflows 32 cols).
         ReceiptTextFormatter.twoCol("TOTAL AKHIR", ReceiptTextFormatter.rupiah(r.total)).split("\n").forEach { line(b, it) }
-        bytes(b, 0x1D, 0x21, 0x00); bytes(b, 0x1B, 0x45, 0x00)
+        bytes(b, 0x1B, 0x45, 0x00)
         ReceiptTextFormatter.twoCol("Status Pembayaran", r.paymentStatus).split("\n").forEach { line(b, it) }
         line(b, "-".repeat(32))
 

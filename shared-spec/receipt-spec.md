@@ -35,7 +35,7 @@ Jarak & antar jemput
 --------------------------------
 Subtotal               Rp 200.000
 --------------------------------
-TOTAL AKHIR            Rp 200.000  <- double-height bold
+TOTAL AKHIR            Rp 200.000  <- bold, normal size
 Status Pembayaran      LUNAS Qris
 --------------------------------
   TERIMA KASIH ATAS KUNJUNGAN ANDA <- bold centered
@@ -54,7 +54,7 @@ Status Pembayaran      LUNAS Qris
 - Items: for each item:
   - Line1: `name` (bold) left, `Rp X` right via two-col. If name + price > 32, print name on its own line(s) wrapped, then price right-aligned on next line.
   - Line2+: `desc` wrapped, normal font, e.g. `Durasi 60 menit`.
-- Totals: `Subtotal`, `TOTAL AKHIR` (double-height bold), `Status Pembayaran` + status right.
+- Totals: `Subtotal`, `TOTAL AKHIR` (bold, normal size — double-size overflows 32 cols), `Status Pembayaran` + status right.
 - Feed 4 lines + cut at end.
 
 ## 4. ESC/POS bytes (identical both platforms)
