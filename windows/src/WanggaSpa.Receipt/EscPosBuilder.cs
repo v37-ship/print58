@@ -15,6 +15,7 @@ public static class EscPosBuilder
     {
         var b = new List<byte>();
         Add(b, 0x1B, 0x40);                       // INIT
+        Add(b, 0x1B, 0x33, 0x18);                 // tighter line spacing (24 dots, default 30)
         Add(b, 0x1B, 0x61, 0x01);                 // CENTER
         Add(b, 0x1D, 0x21, 0x11); Add(b, 0x1B, 0x45, 0x01);
         Line(b, ReceiptTextFormatter.PrinterSafe(r.Store.Name));
@@ -41,8 +42,8 @@ public static class EscPosBuilder
             Add(b, 0x1B, 0x45, 0x01);
             foreach (var l in ReceiptTextFormatter.TwoCol(it.Name, ReceiptTextFormatter.Rupiah(it.Price)).Split('\n')) Line(b, l);
             Add(b, 0x1B, 0x45, 0x00);
-            foreach (var l in ReceiptTextFormatter.Wrap(it.Desc, 32)) Line(b, l);
-            Line(b, "");
+            if (!string.IsNullOrWhiteSpace(it.Desc))
+                foreach (var l in ReceiptTextFormatter.Wrap(it.Desc, 32)) Line(b, l);
         }
 
         Line(b, new string('-', 32));
@@ -59,7 +60,8 @@ public static class EscPosBuilder
         foreach (var f in r.FooterLines)
             foreach (var l in ReceiptTextFormatter.Center(f).Split('\n')) Line(b, l);
         Add(b, 0x1B, 0x45, 0x00);
-        Add(b, 0x1B, 0x64, 0x04);                 // feed 4
+        Add(b, 0x1B, 0x64, 0x02);                 // feed 2
+        Add(b, 0x1B, 0x32);                       // reset line spacing to default
         Add(b, 0x1D, 0x56, 0x01);                 // cut
         return b.ToArray();
     }

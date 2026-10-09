@@ -56,7 +56,8 @@ Status Pembayaran      LUNAS Qris
   - Render as `left.padEnd(W - right.len) + right`. If left too long, wrap left first onto its own line then render last segment with right. Name truncated at 40 chars.
 - Items: for each item:
   - Line1: `name` (bold) left, `Rp X` right via two-col. If name + price > 32, print name on its own line(s) wrapped, then price right-aligned on next line.
-  - Line2+: `desc` wrapped, normal font, e.g. `Durasi 60 menit`.
+  - Line2: `desc` wrapped, normal font (only when non-empty). No blank line between items — compact.
+- Feed 2 lines, reset spacing (`ESC 2`), then cut at end.
 - Totals: `Subtotal`, `TOTAL AKHIR` (bold, normal size — double-size overflows 32 cols), `Status Pembayaran` + status right.
 - Feed 4 lines + cut at end.
 
@@ -73,10 +74,12 @@ SIZE_NORMAL 1D 21 00
 SIZE_2X     1D 21 11   (double w+h, header store name only)
 FONT_A      1B 4D 00   (normal, 32 cols — everything; no condensed font)
 FEED n      1B 64 n
+SPACING n   1B 33 n   (set line spacing, 24 = compact; default 30)
+SPACING_RST 1B 32     (reset line spacing to default)
 CUT         1D 56 01
 ```
 
-Sequence: INIT → header (CTR, 2X+BOLD store name, NORMAL+BOLD tagline, NORMAL address) → LEFT item/meta rows → CTR footer (BOLD) → FEED 4 → CUT. All 32 cols, so on-screen preview == print.
+Sequence: INIT → spacing 24 → header (CTR, 2X+BOLD store name, NORMAL+BOLD tagline, NORMAL address) → LEFT item/meta rows → CTR footer (BOLD) → FEED 2 → spacing reset → CUT. All 32 cols, so on-screen preview == print.
 
 ## 5. Edge cases
 

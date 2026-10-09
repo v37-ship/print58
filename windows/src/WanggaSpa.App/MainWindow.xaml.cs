@@ -64,8 +64,10 @@ public partial class MainWindow : Window
         if (PrinterBox.SelectedItem is null) { StatusText.Text = "Pilih printer dulu."; return; }
         try
         {
-            _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(ReceiptTextFormatter.Sample()));
-            StatusText.Text = "Test print terkirim.";
+            var test = BuildReceipt();
+            PreviewText.Text = ReceiptTextFormatter.BuildPreview(test);
+            _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(test));
+            StatusText.Text = "Test print terkirim (isi sesuai form).";
         }
         catch (Exception ex) { StatusText.Text = "Gagal print: " + ex.Message; }
     }

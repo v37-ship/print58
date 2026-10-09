@@ -130,8 +130,10 @@ fun CashierScreen() {
                         val svc = BluetoothPrinterService(bm?.adapter)
                         val dev = svc.bondedPrinters().firstOrNull()
                             ?: throw Exception("Tidak ada printer paired.")
-                        withContext(Dispatchers.IO) { svc.print(dev, EscPosBuilder.build(sampleReceipt())) }
-                        "Test terkirim ke ${dev.name}"
+                        val r = buildReceipt()
+                        preview = ReceiptTextFormatter.buildPreview(r)
+                        withContext(Dispatchers.IO) { svc.print(dev, EscPosBuilder.build(r)) }
+                        "Test terkirim ke ${dev.name} (isi sesuai form)"
                     } catch (e: Exception) { "Gagal: ${e.message}" }
                 }
             }) { Text("Test") }

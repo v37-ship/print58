@@ -15,6 +15,7 @@ object EscPosBuilder {
     fun build(r: Receipt): ByteArray {
         val b = ByteArrayOutputStream()
         bytes(b, 0x1B, 0x40)          // INIT
+        bytes(b, 0x1B, 0x33, 0x18)    // tighter line spacing (24 dots, default 30)
         bytes(b, 0x1B, 0x61, 0x01)    // CENTER
         bytes(b, 0x1D, 0x21, 0x11); bytes(b, 0x1B, 0x45, 0x01)
         line(b, ReceiptTextFormatter.printerSafe(r.store.name))
@@ -40,8 +41,8 @@ object EscPosBuilder {
             bytes(b, 0x1B, 0x45, 0x01)
             ReceiptTextFormatter.twoCol(it.name, ReceiptTextFormatter.rupiah(it.price)).split("\n").forEach { l -> line(b, l) }
             bytes(b, 0x1B, 0x45, 0x00)
-            ReceiptTextFormatter.wrap(it.desc).forEach { l -> line(b, l) }
-            line(b, "")
+            if (it.desc.isNotBlank())
+                ReceiptTextFormatter.wrap(it.desc).forEach { l -> line(b, l) }
         }
 
         line(b, "-".repeat(32))
@@ -58,7 +59,8 @@ object EscPosBuilder {
         for (f in r.footerLines)
             ReceiptTextFormatter.center(f).split("\n").forEach { line(b, it) }
         bytes(b, 0x1B, 0x45, 0x00)
-        bytes(b, 0x1B, 0x64, 0x04)
+        bytes(b, 0x1B, 0x64, 0x02)    // feed 2
+        bytes(b, 0x1B, 0x32)          // reset line spacing to default
         bytes(b, 0x1D, 0x56, 0x01)
         return b.toByteArray()
     }

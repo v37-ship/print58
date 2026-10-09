@@ -96,8 +96,8 @@ public static class ReceiptTextFormatter
         foreach (var it in r.Items)
         {
             b.Add(TwoCol(it.Name, Rupiah(it.Price)));
-            foreach (var d in Wrap(it.Desc, Width)) b.Add(d);
-            b.Add("");
+            if (!string.IsNullOrWhiteSpace(it.Desc))
+                foreach (var d in Wrap(it.Desc, Width)) b.Add(d);
         }
         b.Add(Dash());
         b.Add(TwoCol("Subtotal", Rupiah(r.Subtotal)));
@@ -113,7 +113,7 @@ public static class ReceiptTextFormatter
         new StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
             "Kayu Putih II No.32, Pulo Gadung, Jaktim",
             "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-        "Mama Isaac", "08131006650", "WELCOME10", "28/09/2026", "14:15 WIB",
+        "Mama Isaac", "08131006650", "", "28/09/2026", "14:15 WIB",
         new List<ReceiptItem> {
             new("Massage Kids", "Durasi 60 menit", 135000),
             new("Inflaren", "Durasi 30 menit", 50000),

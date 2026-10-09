@@ -82,8 +82,7 @@ object ReceiptTextFormatter {
         b.add(dash())
         for (it in r.items) {
             b.add(twoCol(it.name, rupiah(it.price)))
-            b.addAll(wrap(it.desc))
-            b.add("")
+            if (it.desc.isNotBlank()) b.addAll(wrap(it.desc))
         }
         b.add(dash())
         b.add(twoCol("Subtotal", rupiah(r.subtotal)))

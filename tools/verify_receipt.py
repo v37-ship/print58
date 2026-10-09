@@ -54,7 +54,7 @@ def build_preview(t):
     b += ["-"*WIDTH, two_col("Layanan / Produk","Total"), "-"*WIDTH]
     for it in t["items"]:
         b.append(two_col(it["name"], rupiah(it["price"])))
-        b += wrap(it["desc"]); b.append("")
+        if it["desc"].strip(): b += wrap(it["desc"])
     b += ["-"*WIDTH, two_col("Subtotal", rupiah(t["subtotal"])),
           "-"*WIDTH, two_col("TOTAL AKHIR", rupiah(t["total"])),
           two_col("Status Pembayaran", t["payment_status"]),
@@ -71,8 +71,12 @@ lines = prev.split("\n")
 assert all(len(l) <= WIDTH for l in lines), [l for l in lines if len(l) > WIDTH]
 assert t["subtotal"] == sum(i["price"] for i in t["items"]) == 200000
 assert "WANGGA SPA" in prev and "TOTAL AKHIR" in prev and "Rp 200.000" in prev
-assert "Mama Isaac" in prev and "LUNAS Qris" in prev and "WELCOME10" in prev
+assert "Mama Isaac" in prev and "LUNAS Qris" in prev
 assert "Nomor HP  : 08131006650" in prev
+# sample has empty promo -> no Promo line; with promo -> line appears
+assert "Promo" not in prev.split("Nomor HP")[1].split("-"*WIDTH)[0], "empty promo must omit line"
+t3 = dict(t, promo_code="WELCOME10")
+assert "Promo     : WELCOME10" in build_preview(t3), "filled promo must print"
 # empty promo -> no Promo line; empty phone -> dash
 t2 = dict(t, promo_code="  ", customer_phone=" ")
 p2 = build_preview(t2)
