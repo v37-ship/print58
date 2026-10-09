@@ -139,13 +139,12 @@ fun CashierScreen() {
         val total = items.sumOf { it.price }
         val discVal = discount.trim().toLongOrNull() ?: 0L
         val discType = if (discount.trim().isEmpty()) "" else discountType
-        val grand = total - ReceiptTextFormatter.discountAmount(total, discType, discVal)
         return Receipt(
             StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
             customer, nomorHp, promo, discType, discVal, sdf.format(now), stf.format(now) + " WIB",
-            items, total, grand, pay,
+            items, total, pay,
             listOf("TERIMA KASIH ATAS KUNJUNGAN ANDA",
                 "Kesehatan & Kebugaran Prioritas",
                 "***Wangga Baby Mom Woman Spa***")
@@ -235,7 +234,7 @@ fun CashierScreen() {
                                 promoPhone = r.promoCode,
                                 discountType = r.discountType, discountValue = r.discountValue,
                                 itemsJson = r.items.joinToString(";") { "${it.name}|${it.desc}|${it.price}" },
-                                subtotal = r.subtotal, total = r.total,
+                                subtotal = r.subtotal, total = r.grandTotal,
                                 paymentStatus = r.paymentStatus))
                         }
                         refreshHistory()

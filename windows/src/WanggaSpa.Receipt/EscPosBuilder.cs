@@ -48,7 +48,7 @@ public static class EscPosBuilder
 
         Line(b, new string('-', 32));
         foreach (var l in ReceiptTextFormatter.TwoCol("Subtotal", ReceiptTextFormatter.Rupiah(r.Subtotal)).Split('\n')) Line(b, l);
-        long disc = ReceiptTextFormatter.DiscountAmount(r.Subtotal, r.DiscountType, r.DiscountValue);
+        long disc = r.Subtotal - r.GrandTotal;
         if (disc > 0)
             foreach (var l in ReceiptTextFormatter.TwoCol(
                 ReceiptTextFormatter.DiscountLabel(r.DiscountType, r.DiscountValue),
@@ -56,7 +56,7 @@ public static class EscPosBuilder
         Line(b, new string('-', 32));
         Add(b, 0x1B, 0x45, 0x01);
         // TOTAL AKHIR: bold, normal size (double-size overflows 32 cols).
-        foreach (var l in ReceiptTextFormatter.TwoCol("TOTAL AKHIR", ReceiptTextFormatter.Rupiah(r.Subtotal - ReceiptTextFormatter.DiscountAmount(r.Subtotal, r.DiscountType, r.DiscountValue))).Split('\n')) Line(b, l);
+        foreach (var l in ReceiptTextFormatter.TwoCol("TOTAL AKHIR", ReceiptTextFormatter.Rupiah(r.GrandTotal)).Split('\n')) Line(b, l);
         Add(b, 0x1B, 0x45, 0x00);
         foreach (var l in ReceiptTextFormatter.TwoCol("Status Pembayaran", r.PaymentStatus).Split('\n')) Line(b, l);
         Line(b, new string('-', 32));

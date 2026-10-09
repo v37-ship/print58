@@ -24,6 +24,9 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    // JVM unit tests (GoldenTest) read the shared fixtures directly from shared-spec/golden,
+    // so they compile against the same inputs as the C# smoke tool and the Python verifier.
+    sourceSets { getByName("test") { resources.srcDir("../../shared-spec/golden") } }
 }
 
 dependencies {
@@ -38,4 +41,6 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }
+

@@ -13,10 +13,13 @@ data class Receipt(
     val time: String,
     val items: List<ReceiptItem>,
     val subtotal: Long,
-    val total: Long,
     val paymentStatus: String,
     val footerLines: List<String>
-)
+) {
+    /** Single source of truth for the payable amount. Never negative. */
+    val grandTotal: Long
+        get() = subtotal - ReceiptTextFormatter.discountAmount(subtotal, discountType, discountValue)
+}
 
 fun sampleReceipt() = Receipt(
     StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
@@ -28,7 +31,7 @@ fun sampleReceipt() = Receipt(
         ReceiptItem("Inflaren", "Durasi 30 menit", 50000),
         ReceiptItem("Transport PP (HM Care)", "Jarak & antar jemput", 15000)
     ),
-    200000, 200000, "LUNAS Qris",
+    200000, "LUNAS Qris",
     listOf(
         "TERIMA KASIH ATAS KUNJUNGAN ANDA",
         "Kesehatan & Kebugaran Prioritas",

@@ -98,11 +98,11 @@ object ReceiptTextFormatter {
         }
         b.add(dash())
         b.add(twoCol("Subtotal", rupiah(r.subtotal)))
-        val disc = discountAmount(r.subtotal, r.discountType, r.discountValue)
+        val disc = r.subtotal - r.grandTotal
         if (disc > 0)
             b.add(twoCol(discountLabel(r.discountType, r.discountValue), rupiahMinus(disc)))
         b.add(dash())
-        b.add(twoCol("TOTAL AKHIR", rupiah(r.subtotal - disc)))
+        b.add(twoCol("TOTAL AKHIR", rupiah(r.grandTotal)))
         b.add(twoCol("Status Pembayaran", r.paymentStatus))
         b.add(dash())
         for (f in r.footerLines) b.add(center(f))

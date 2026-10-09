@@ -111,11 +111,11 @@ public static class ReceiptTextFormatter
         }
         b.Add(Dash());
         b.Add(TwoCol("Subtotal", Rupiah(r.Subtotal)));
-        long disc = DiscountAmount(r.Subtotal, r.DiscountType, r.DiscountValue);
+        long disc = r.Subtotal - r.GrandTotal;
         if (disc > 0)
             b.Add(TwoCol(DiscountLabel(r.DiscountType, r.DiscountValue), RupiahMinus(disc)));
         b.Add(Dash());
-        b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.Subtotal - disc)));
+        b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.GrandTotal)));
         b.Add(TwoCol("Status Pembayaran", r.PaymentStatus));
         b.Add(Dash());
         foreach (var f in r.FooterLines) b.Add(Center(f));
@@ -132,7 +132,7 @@ public static class ReceiptTextFormatter
             new("Inflaren", "Durasi 30 menit", 50000),
             new("Transport PP (HM Care)", "Jarak & antar jemput", 15000),
         },
-        200000, 200000, "LUNAS Qris",
+        200000, "LUNAS Qris",
         new List<string> {
             "TERIMA KASIH ATAS KUNJUNGAN ANDA",
             "Kesehatan & Kebugaran Prioritas",

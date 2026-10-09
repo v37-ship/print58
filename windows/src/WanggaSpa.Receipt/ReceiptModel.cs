@@ -14,6 +14,9 @@ public sealed record Receipt(
     string Time,
     List<ReceiptItem> Items,
     long Subtotal,
-    long Total,
     string PaymentStatus,
-    List<string> FooterLines);
+    List<string> FooterLines)
+{
+    /// <summary>Single source of truth for the payable amount. Never negative.</summary>
+    public long GrandTotal => Subtotal - ReceiptTextFormatter.DiscountAmount(Subtotal, DiscountType, DiscountValue);
+}
