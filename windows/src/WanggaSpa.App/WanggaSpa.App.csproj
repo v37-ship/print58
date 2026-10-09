@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>WanggaSpa</AssemblyName>
+    <Version>1.6.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WanggaSpa.Receipt\WanggaSpa.Receipt.csproj" />

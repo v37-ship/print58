@@ -8,17 +8,43 @@ namespace WanggaSpa.App;
 public partial class MainWindow : Window
 {
     readonly WindowsPrinterService _printer = new();
-    readonly Db _db = new(Path.Combine(
+    static readonly string DbPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "WanggaSpa", "wangga.db"));
+        "WanggaSpa", "wangga.db");
+    readonly Db _db = new(DbPath);
     ReceiptModel? _current;
 
     public MainWindow()
     {
         InitializeComponent();
+        VersionStatus.Text = $"v{AppInfo.Version}";
+        PreviewKeyDown += OnKey;
         OnRefreshPrinters(null, null);
         OnPreview(null, null);
         OnRefreshHistory(null, null);
+    }
+
+    void OnKey(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.System &&
+            (e.SystemKey == System.Windows.Input.Key.LeftAlt || e.SystemKey == System.Windows.Input.Key.RightAlt))
+        {
+            if (!e.IsRepeat)
+                MainMenu.Visibility = MainMenu.Visibility == Visibility.Visible
+                    ? Visibility.Collapsed : Visibility.Visible;
+            e.Handled = true;
+        }
+        else if (e.Key == System.Windows.Input.Key.Escape && MainMenu.Visibility == Visibility.Visible)
+        {
+            MainMenu.Visibility = Visibility.Collapsed;
+            e.Handled = true;
+        }
+    }
+
+    void OnPrinterChanged(object? s, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (PrinterBox.SelectedItem is not null)
+            PrinterStatus.Text = "Printer: " + PrinterBox.SelectedItem;
     }
 
     void OnRefreshPrinters(object? s, RoutedEventArgs? e)
@@ -108,5 +134,67 @@ public partial class MainWindow : Window
             File.WriteAllText(dlg.FileName, Db.ToCsv(_db.AllTx(100000)));
             DailyTotalText.Text = "CSV tersimpan: " + dlg.FileName;
         }
+    }
+
+    string AboutDetail()
+    {
+        int txCount = 0;
+        try { txCount = _db.AllTx(100000).Count; } catch { }
+        return string.Join("\n", new[] {
+            $"Aplikasi : WanggaSpa Kasir 58mm",
+            $"Runtime  : {AppInfo.Runtime}",
+            $"OS       : {Environment.OSVersion}",
+            $"Printer  : {(PrinterBox.SelectedItem?.ToString() ?? "-")}",
+            $"Kertas   : 58mm, 32 kolom, Font A",
+            $"Database : {DbPath}",
+            $"Transaksi: {txCount} tersimpan",
+        });
+    }
+
+    void OnAbout(object? s, RoutedEventArgs? e) =>
+        new AboutWindow(AboutDetail()) { Owner = this }.ShowDialog();
+
+    void OnGuide(object? s, RoutedEventArgs? e) => MessageBox.Show(
+        "CARA PAKAI\n\n" +
+        "1. Install driver printer thermal (mis. POS-58).\n" +
+        "2. Pilih printer di dropdown, klik Refresh bila kosong.\n" +
+        "3. Klik Test Print untuk struk contoh sesuai form.\n" +
+        "4. Isi Pelanggan, Nomor HP, Promo (boleh kosong), layanan & pembayaran.\n" +
+        "5. Klik Print + Simpan. Otomatis tersimpan di tab Riwayat.\n" +
+        "6. Tekan Alt untuk tampil/sembunyi menu Bantuan.",
+        "Panduan Pakai", MessageBoxButton.OK, MessageBoxImage.Information);
+
+    void OnBackupDb(object? s, RoutedEventArgs? e)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog
+            { FileName = $"wangga-{DateTime.Now:yyyyMMdd}.db", Filter = "SQLite DB|*.db" };
+        if (dlg.ShowDialog() == true)
+        {
+            File.Copy(DbPath, dlg.FileName, overwrite: true);
+            MessageBox.Show("Backup tersimpan: " + dlg.FileName, "Backup Database",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    void OnCheckUpdate(object? s, RoutedEventArgs? e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                AppInfo.ReleasesUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex) { MessageBox.Show("Gagal buka browser: " + ex.Message); }
+    }
+
+    void OnCopyDiagnostics(object? s, RoutedEventArgs? e)
+    {
+        try
+        {
+            var info = $"WanggaSpa v{AppInfo.Version} (build {AppInfo.BuildTime})\n" +
+                AboutDetail() + "\nStatus: " + StatusText.Text;
+            Clipboard.SetText(info);
+            StatusText.Text = "Info diagnostik disalin ke clipboard.";
+        }
+        catch (Exception ex) { StatusText.Text = "Gagal salin: " + ex.Message; }
     }
 }
