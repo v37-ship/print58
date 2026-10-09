@@ -8,6 +8,16 @@ public static class ReceiptTextFormatter
     public static string PhoneOrDash(string p) =>
         string.IsNullOrWhiteSpace(p) ? "-" : p.Trim();
 
+    /// <summary>DiscountType: "" = none, "%" = percent, "Rp" = nominal. Never exceeds subtotal.</summary>
+    public static long DiscountAmount(long subtotal, string type, long value) =>
+        type == "%" ? Math.Clamp(subtotal * Math.Clamp(value, 0, 100) / 100, 0, subtotal)
+        : type == "Rp" ? Math.Clamp(value, 0, subtotal) : 0;
+
+    public static string DiscountLabel(string type, long value) =>
+        type == "%" ? $"Diskon {Math.Clamp(value, 0, 100)}%" : "Diskon";
+
+    public static string RupiahMinus(long v) => "-" + Rupiah(v);
+
     public static string Rupiah(long v) =>
         "Rp " + v.ToString("#,##0", new System.Globalization.CultureInfo("id-ID")).Replace(",", ".");
 
@@ -101,8 +111,11 @@ public static class ReceiptTextFormatter
         }
         b.Add(Dash());
         b.Add(TwoCol("Subtotal", Rupiah(r.Subtotal)));
+        long disc = DiscountAmount(r.Subtotal, r.DiscountType, r.DiscountValue);
+        if (disc > 0)
+            b.Add(TwoCol(DiscountLabel(r.DiscountType, r.DiscountValue), RupiahMinus(disc)));
         b.Add(Dash());
-        b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.Total)));
+        b.Add(TwoCol("TOTAL AKHIR", Rupiah(r.Subtotal - disc)));
         b.Add(TwoCol("Status Pembayaran", r.PaymentStatus));
         b.Add(Dash());
         foreach (var f in r.FooterLines) b.Add(Center(f));
@@ -113,7 +126,7 @@ public static class ReceiptTextFormatter
         new StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
             "Kayu Putih II No.32, Pulo Gadung, Jaktim",
             "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-        "Mama Isaac", "08131006650", "", "28/09/2026", "14:15 WIB",
+        "Mama Isaac", "08131006650", "", "", 0, "28/09/2026", "14:15 WIB",
         new List<ReceiptItem> {
             new("Massage Kids", "Durasi 60 menit", 135000),
             new("Inflaren", "Durasi 30 menit", 50000),

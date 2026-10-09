@@ -8,6 +8,8 @@ public sealed record Receipt(
     string Customer,
     string CustomerPhone,
     string PromoCode,
+    string DiscountType,
+    long DiscountValue,
     string Date,
     string Time,
     List<ReceiptItem> Items,

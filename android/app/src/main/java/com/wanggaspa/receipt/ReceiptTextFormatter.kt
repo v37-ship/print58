@@ -8,6 +8,18 @@ object ReceiptTextFormatter {
     const val WIDTH = 32
 
     fun phoneOrDash(p: String) = if (p.isBlank()) "-" else p.trim()
+
+    /** discountType: "" = none, "%" = percent, "Rp" = nominal. Never exceeds subtotal. */
+    fun discountAmount(subtotal: Long, type: String, value: Long): Long = when (type) {
+        "%" -> (subtotal * value.coerceIn(0, 100) / 100).coerceIn(0, subtotal)
+        "Rp" -> value.coerceIn(0, subtotal)
+        else -> 0L
+    }
+
+    fun discountLabel(type: String, value: Long) =
+        if (type == "%") "Diskon ${value.coerceIn(0, 100)}%" else "Diskon"
+
+    fun rupiahMinus(v: Long) = "-" + rupiah(v)
     fun dash() = "-".repeat(WIDTH)
 
     fun rupiah(v: Long): String {
@@ -86,8 +98,11 @@ object ReceiptTextFormatter {
         }
         b.add(dash())
         b.add(twoCol("Subtotal", rupiah(r.subtotal)))
+        val disc = discountAmount(r.subtotal, r.discountType, r.discountValue)
+        if (disc > 0)
+            b.add(twoCol(discountLabel(r.discountType, r.discountValue), rupiahMinus(disc)))
         b.add(dash())
-        b.add(twoCol("TOTAL AKHIR", rupiah(r.total)))
+        b.add(twoCol("TOTAL AKHIR", rupiah(r.subtotal - disc)))
         b.add(twoCol("Status Pembayaran", r.paymentStatus))
         b.add(dash())
         for (f in r.footerLines) b.add(center(f))

@@ -58,7 +58,8 @@ Status Pembayaran      LUNAS Qris
   - Line1: `name` (bold) left, `Rp X` right via two-col. If name + price > 32, print name on its own line(s) wrapped, then price right-aligned on next line.
   - Line2: `desc` wrapped, normal font (only when non-empty). No blank line between items — compact.
 - Feed 2 lines, reset spacing (`ESC 2`), then cut at end.
-- Totals: `Subtotal`, `TOTAL AKHIR` (bold, normal size — double-size overflows 32 cols), `Status Pembayaran` + status right.
+- Totals: `Subtotal`, optional `Diskon 10%` / `Diskon` with `-Rp X` (only when discount > 0), `TOTAL AKHIR` (bold, normal size — double-size overflows 32 cols), `Status Pembayaran` + status right.
+- Discount: type `""` none, `"%"` percent (0–100), `"Rp"` nominal. Clamped so `total = subtotal − discount ≥ 0`. Empty input = none.
 - Feed 4 lines + cut at end.
 
 ## 4. ESC/POS bytes (identical both platforms)

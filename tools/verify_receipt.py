@@ -5,6 +5,14 @@ WIDTH = 32
 
 def phone_or_dash(p): return "-" if not p.strip() else p.strip()
 
+def discount_amount(subtotal, dtype, dval):
+    if dtype == "%": return min(max(subtotal * min(max(dval, 0), 100) // 100, 0), subtotal)
+    if dtype == "Rp": return min(max(dval, 0), subtotal)
+    return 0
+
+def discount_label(dtype, dval):
+    return f"Diskon {min(max(dval, 0), 100)}%" if dtype == "%" else "Diskon"
+
 def printer_safe(s): return s.replace("•","*").replace("–","-").replace("—","-")
 
 def rupiah(v):
@@ -55,8 +63,11 @@ def build_preview(t):
     for it in t["items"]:
         b.append(two_col(it["name"], rupiah(it["price"])))
         if it["desc"].strip(): b += wrap(it["desc"])
-    b += ["-"*WIDTH, two_col("Subtotal", rupiah(t["subtotal"])),
-          "-"*WIDTH, two_col("TOTAL AKHIR", rupiah(t["total"])),
+    b += ["-"*WIDTH, two_col("Subtotal", rupiah(t["subtotal"]))]
+    disc = discount_amount(t["subtotal"], t.get("discount_type", ""), t.get("discount_value", 0))
+    if disc > 0:
+        b.append(two_col(discount_label(t["discount_type"], t["discount_value"]), "-" + rupiah(disc)))
+    b += ["-"*WIDTH, two_col("TOTAL AKHIR", rupiah(t["subtotal"] - disc)),
           two_col("Status Pembayaran", t["payment_status"]),
           "-"*WIDTH]
     for f in t["footer"]: b.append(center(f))
@@ -82,4 +93,18 @@ t2 = dict(t, promo_code="  ", customer_phone=" ")
 p2 = build_preview(t2)
 assert "Promo" not in p2.split("Nomor HP")[1].split("-"*WIDTH)[0], "empty promo must omit line"
 assert "Nomor HP  : -" in p2, "empty phone must show dash"
+# discount cases: 10% of 200.000 = 20.000 -> total 180.000
+t4 = dict(t, discount_type="%", discount_value=10)
+p4 = build_preview(t4)
+assert "Diskon 10%" in p4 and "-Rp 20.000" in p4 and "Rp 180.000" in p4
+# nominal 25.000 -> total 175.000
+t5 = dict(t, discount_type="Rp", discount_value=25000)
+p5 = build_preview(t5)
+assert "Diskon" in p5 and "-Rp 25.000" in p5 and "Rp 175.000" in p5
+# clamps: 150% -> 100%, 999.999.999 -> subtotal; total never negative
+t6 = dict(t, discount_type="%", discount_value=150)
+assert "Rp 0" in build_preview(t6).split("TOTAL AKHIR")[1]
+t7 = dict(t, discount_type="Rp", discount_value=999999999)
+assert "Rp 0" in build_preview(t7).split("TOTAL AKHIR")[1]
+assert all(len(l) <= WIDTH for l in p4.split("\n") + p5.split("\n")), "discount lines too long"
 print(f"OK: {len(lines)} lines, max_len={max(len(l) for l in lines)}")

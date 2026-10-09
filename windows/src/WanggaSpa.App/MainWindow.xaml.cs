@@ -65,13 +65,18 @@ public partial class MainWindow : Window
             items.Add(new ReceiptItem(p[0].Trim(), p[1].Trim(), long.Parse(p[2].Trim())));
         }
         long total = items.Sum(i => i.Price);
+        long.TryParse(DiscountBox.Text.Trim(), out long discVal);
+        string discType = string.IsNullOrWhiteSpace(DiscountBox.Text) ? ""
+            : ((System.Windows.Controls.ComboBoxItem)DiscountTypeBox.SelectedItem).Content.ToString()!;
+        long grand = total - ReceiptTextFormatter.DiscountAmount(total, discType, discVal);
         return new ReceiptModel(
             new StoreInfo("WANGGA SPA", "Sehat • Relaks • Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
             CustomerBox.Text.Trim(), CustomerPhoneBox.Text.Trim(), PromoBox.Text.Trim(),
+            discType, discVal,
             now.ToString("dd/MM/yyyy"), now.ToString("HH:mm") + " WIB",
-            items, total, total,
+            items, total, grand,
             ((System.Windows.Controls.ComboBoxItem)PayBox.SelectedItem).Content.ToString()!,
             new List<string> {
                 "TERIMA KASIH ATAS KUNJUNGAN ANDA",
@@ -106,7 +111,7 @@ public partial class MainWindow : Window
             OnPreview(null, null);
             _printer.Print(PrinterBox.SelectedItem.ToString()!, EscPosBuilder.Build(_current!));
             _db.InsertTx(new Db.TxRow(0, _current!.Date, _current!.Time, _current!.Customer,
-                _current!.CustomerPhone, _current!.PromoCode,
+                _current!.CustomerPhone, _current!.PromoCode, _current!.DiscountType, _current!.DiscountValue,
                 Db.ItemsJson(_current!.Items), _current!.Subtotal, _current!.Total, _current!.PaymentStatus));
             OnRefreshHistory(null, null);
             StatusText.Text = $"Tercetak + tersimpan. Total {ReceiptTextFormatter.Rupiah(_current!.Total)}.";

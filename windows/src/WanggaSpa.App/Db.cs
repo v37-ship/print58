@@ -20,6 +20,7 @@ public sealed class Db
               id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, time TEXT NOT NULL,
               customer TEXT NOT NULL, customer_phone TEXT NOT NULL DEFAULT '',
               promo_phone TEXT NOT NULL DEFAULT '',
+              discount_type TEXT NOT NULL DEFAULT '', discount_value INTEGER NOT NULL DEFAULT 0,
               items_json TEXT NOT NULL, subtotal INTEGER NOT NULL, total INTEGER NOT NULL,
               payment_status TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -27,6 +28,10 @@ public sealed class Db
         // Migration for DBs created by older versions (promo_phone now holds the promo code).
         try { new SqliteCommand("ALTER TABLE transactions ADD COLUMN customer_phone TEXT NOT NULL DEFAULT ''", c).ExecuteNonQuery(); }
         catch (SqliteException) { /* column already exists */ }
+        try { new SqliteCommand("ALTER TABLE transactions ADD COLUMN discount_type TEXT NOT NULL DEFAULT ''", c).ExecuteNonQuery(); }
+        catch (SqliteException) { }
+        try { new SqliteCommand("ALTER TABLE transactions ADD COLUMN discount_value INTEGER NOT NULL DEFAULT 0", c).ExecuteNonQuery(); }
+        catch (SqliteException) { }
         foreach (var (k, v) in new Dictionary<string, string> {
             ["store_name"] = "WANGGA SPA",
             ["tagline"] = "Sehat • Relaks • Bahagia",
@@ -50,18 +55,20 @@ public sealed class Db
     }
 
     public sealed record TxRow(long Id, string Date, string Time, string Customer,
-        string CustomerPhone, string Promo, string ItemsJson, long Subtotal, long Total, string Pay);
+        string CustomerPhone, string Promo, string DiscountType, long DiscountValue,
+        string ItemsJson, long Subtotal, long Total, string Pay);
 
     public void InsertTx(TxRow t)
     {
         using var c = new SqliteConnection($"Data Source={_path}");
         c.Open();
         var cmd = new SqliteCommand(
-            "INSERT INTO transactions(date,time,customer,customer_phone,promo_phone,items_json,subtotal,total,payment_status)" +
-            " VALUES($d,$t,$cu,$cp,$pr,$ij,$st,$to,$pa)", c);
+            "INSERT INTO transactions(date,time,customer,customer_phone,promo_phone,discount_type,discount_value,items_json,subtotal,total,payment_status)" +
+            " VALUES($d,$t,$cu,$cp,$pr,$dt,$dv,$ij,$st,$to,$pa)", c);
         cmd.Parameters.AddWithValue("$d", t.Date); cmd.Parameters.AddWithValue("$t", t.Time);
         cmd.Parameters.AddWithValue("$cu", t.Customer); cmd.Parameters.AddWithValue("$cp", t.CustomerPhone);
-        cmd.Parameters.AddWithValue("$pr", t.Promo); cmd.Parameters.AddWithValue("$ij", t.ItemsJson);
+        cmd.Parameters.AddWithValue("$pr", t.Promo); cmd.Parameters.AddWithValue("$dt", t.DiscountType);
+        cmd.Parameters.AddWithValue("$dv", t.DiscountValue); cmd.Parameters.AddWithValue("$ij", t.ItemsJson);
         cmd.Parameters.AddWithValue("$st", t.Subtotal); cmd.Parameters.AddWithValue("$to", t.Total);
         cmd.Parameters.AddWithValue("$pa", t.Pay);
         cmd.ExecuteNonQuery();
@@ -73,13 +80,13 @@ public sealed class Db
         using var c = new SqliteConnection($"Data Source={_path}");
         c.Open();
         var cmd = new SqliteCommand(
-            "SELECT id,date,time,customer,customer_phone,promo_phone,items_json,subtotal,total,payment_status" +
+            "SELECT id,date,time,customer,customer_phone,promo_phone,discount_type,discount_value,items_json,subtotal,total,payment_status" +
             " FROM transactions ORDER BY id DESC LIMIT $n", c);
         cmd.Parameters.AddWithValue("$n", limit);
         using var rd = cmd.ExecuteReader();
         while (rd.Read()) res.Add(new TxRow(rd.GetInt64(0), rd.GetString(1), rd.GetString(2),
-            rd.GetString(3), rd.GetString(4), rd.GetString(5), rd.GetString(6),
-            rd.GetInt64(7), rd.GetInt64(8), rd.GetString(9)));
+            rd.GetString(3), rd.GetString(4), rd.GetString(5), rd.GetString(6), rd.GetInt64(7),
+            rd.GetString(8), rd.GetInt64(9), rd.GetInt64(10), rd.GetString(11)));
         return res;
     }
 
@@ -94,9 +101,9 @@ public sealed class Db
 
     public static string ToCsv(IEnumerable<TxRow> rows)
     {
-        var sb = new System.Text.StringBuilder("id,date,time,customer,phone,promo,subtotal,total,payment\n");
+        var sb = new System.Text.StringBuilder("id,date,time,customer,phone,promo,discount_type,discount_value,subtotal,total,payment\n");
         foreach (var r in rows)
-            sb.Append($"{r.Id},{r.Date},{r.Time},{Csv(r.Customer)},{Csv(r.CustomerPhone)},{Csv(r.Promo)},{r.Subtotal},{r.Total},{Csv(r.Pay)}\n");
+            sb.Append($"{r.Id},{r.Date},{r.Time},{Csv(r.Customer)},{Csv(r.CustomerPhone)},{Csv(r.Promo)},{r.DiscountType},{r.DiscountValue},{r.Subtotal},{r.Total},{Csv(r.Pay)}\n");
         return sb.ToString();
         static string Csv(string s) => s.Contains(',') || s.Contains('"') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
     }

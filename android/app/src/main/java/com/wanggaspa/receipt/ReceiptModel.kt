@@ -7,6 +7,8 @@ data class Receipt(
     val customer: String,
     val customerPhone: String,
     val promoCode: String,
+    val discountType: String,
+    val discountValue: Long,
     val date: String,
     val time: String,
     val items: List<ReceiptItem>,
@@ -20,7 +22,7 @@ fun sampleReceipt() = Receipt(
     StoreInfo("WANGGA SPA", "Sehat * Relaks * Bahagia",
         "Kayu Putih II No.32, Pulo Gadung, Jaktim",
         "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
-    "Mama Isaac", "08131006650", "", "28/09/2026", "14:15 WIB",
+    "Mama Isaac", "08131006650", "", "", 0L, "28/09/2026", "14:15 WIB",
     listOf(
         ReceiptItem("Massage Kids", "Durasi 60 menit", 135000),
         ReceiptItem("Inflaren", "Durasi 30 menit", 50000),

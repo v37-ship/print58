@@ -8,6 +8,7 @@ data class Tx(
     val date: String, val time: String,
     val customer: String, val customerPhone: String = "",
     val promoPhone: String = "", // holds the promo code since v2
+    val discountType: String = "", val discountValue: Long = 0L,
     val itemsJson: String, val subtotal: Long, val total: Long,
     val paymentStatus: String
 )
@@ -32,7 +33,7 @@ interface SvcDao {
     @Query("DELETE FROM services WHERE name=:n") suspend fun delete(n: String)
 }
 
-@Database(entities = [Tx::class, Svc::class], version = 2)
+@Database(entities = [Tx::class, Svc::class], version = 3)
 abstract class AppDb : RoomDatabase() {
     abstract fun tx(): TxDao
     abstract fun svc(): SvcDao

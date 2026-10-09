@@ -8,6 +8,8 @@
   "customer": "Mama Isaac",
   "customer_phone": "08131006650",
   "promo_code": "",
+  "discount_type": "",
+  "discount_value": 0,
   "date": "28/09/2026",
   "time": "14:15 WIB",
   "items": [
