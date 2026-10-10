@@ -22,10 +22,17 @@ public partial class MainWindow : Window
         InitializeComponent();
         VersionStatus.Text = $"v{AppInfo.Version}";
         PreviewKeyDown += OnKey;
-        OnRefreshPrinters(null, null);
-        OnRefreshServices();
-        OnPreview(null, null);
-        OnRefreshHistory(null, null);
+        Loaded += OnLoaded;
+    }
+
+    /// <summary>Init runs after the window shows and never throws, so a DB/printer
+    /// problem can't cause a silent force-close at startup.</summary>
+    void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        try { OnRefreshPrinters(null, null); } catch (Exception ex) { StatusText.Text = "Printer: " + ex.Message; }
+        try { OnRefreshServices(); } catch (Exception ex) { SvcStatus.Text = "Database: " + ex.Message; }
+        try { OnPreview(null, null); } catch (Exception ex) { StatusText.Text = "Error: " + ex.Message; }
+        try { OnRefreshHistory(null, null); } catch (Exception ex) { DailyTotalText.Text = "Riwayat: " + ex.Message; }
     }
 
     // ---------- menu ----------
@@ -60,10 +67,46 @@ public partial class MainWindow : Window
     }
 
     // ---------- services master ----------
+    List<SvcRow> _services = new();
+
     void OnRefreshServices()
     {
-        ServiceGrid.ItemsSource = _db.AllServices();
-        ServiceBox.ItemsSource = _db.AllServices();
+        _services = _db.AllServices();
+        ServiceGrid.ItemsSource = _services;
+        ApplyServiceFilter();
+    }
+
+    /// <summary>Filter the picker as you type; shows "Nama — Deskripsi — Rp harga".</summary>
+    void ApplyServiceFilter()
+    {
+        var q = ServiceFilter.Text.Trim();
+        var rows = string.IsNullOrEmpty(q)
+            ? _services
+            : _services.Where(s => s.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                                || s.Desc.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+        FilteredServices = rows;
+        if (FilteredServices.Count > 0) PickedService = FilteredServices[0];
+    }
+
+    List<SvcRow> FilteredServices
+    {
+        get => _filtered;
+        set { _filtered = value; ServiceList.ItemsSource = value; }
+    }
+    List<SvcRow> _filtered = new();
+
+    SvcRow? PickedService
+    {
+        get => _picked;
+        set { _picked = value; ServiceDetail.Text = value is null ? "" : $"{value.Name} — {value.Desc} — {ReceiptTextFormatter.Rupiah(value.Price)}"; }
+    }
+    SvcRow? _picked;
+
+    void OnServiceFilterChanged(object? s, System.Windows.Controls.TextChangedEventArgs e) => ApplyServiceFilter();
+
+    void OnPickService(object? s, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (ServiceList.SelectedItem is SvcRow row) PickedService = row;
     }
 
     void OnServiceSelected(object? s, SelectionChangedEventArgs e)
@@ -91,14 +134,18 @@ public partial class MainWindow : Window
         if (name.Length == 0) return;
         _db.DeleteService(name);
         SvcName.Clear(); SvcDesc.Clear(); SvcPrice.Clear();
-        SvcStatus.Text = $"Dihapus: {name}";
+        int removed = _cart.RemoveAll(i => i.Name == name);
+        SvcStatus.Text = removed > 0
+            ? $"Dihapus: {name} (juga {removed} baris dari keranjang)"
+            : $"Dihapus: {name}";
         OnRefreshServices();
+        RefreshCart();
     }
 
     // ---------- cart ----------
     void OnAddToCart(object? s, RoutedEventArgs? e)
     {
-        if (ServiceBox.SelectedItem is not SvcRow svc) { StatusText.Text = "Pilih layanan dulu."; return; }
+        if (PickedService is not SvcRow svc) { StatusText.Text = "Pilih layanan dulu."; return; }
         if (!int.TryParse(QtyBox.Text.Trim(), out int qty) || qty < 1)
         { StatusText.Text = "Qty harus angka >= 1."; return; }
         var existing = _cart.FirstOrDefault(i => i.Name == svc.Name);

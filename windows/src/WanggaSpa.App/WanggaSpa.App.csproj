@@ -10,11 +10,13 @@
     <Version>$(WanggaVersion)</Version>
   </PropertyGroup>
   <PropertyGroup>
-    <WanggaVersion Condition=" '$(WanggaVersion)' == '' ">1.9.0</WanggaVersion>
+    <WanggaVersion Condition=" '$(WanggaVersion)' == '' ">1.10.0</WanggaVersion>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WanggaSpa.Receipt\WanggaSpa.Receipt.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <!-- Embedded so the window icon works inside the single-file exe (a loose file is not bundled). -->
+    <Resource Include="logo.ico" />
   </ItemGroup>
 </Project>

@@ -351,7 +351,9 @@ fun CashierScreen() {
                     scope.launch {
                         if (mName.isNotBlank()) {
                             withContext(Dispatchers.IO) { db.svc().delete(mName.trim()) }
-                            mStatus = "Dihapus: ${mName.trim()}"
+                            val gone = cart.removeAll { it.name == mName.trim() }
+                            mStatus = if (gone) "Dihapus: ${mName.trim()} (juga dari keranjang)"
+                                      else "Dihapus: ${mName.trim()}"
                             mName = ""; mDesc = ""; mPrice = ""
                             refreshServices()
                         }
