@@ -50,7 +50,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
   publish:
     needs: [verify, dotnet, android]
@@ -73,11 +73,26 @@ jobs:
             --self-contained -p:EnableWindowsTargeting=true \
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/win-x64
-      - name: Build Android APK
+      - name: Build signed Android APK
         working-directory: android
-        run: ./gradlew assembleDebug --max-workers=2
+        env:
+          WANGGA_KEYSTORE_FILE: ${{ github.workspace }}/android/wangga-release.jks
+          WANGGA_STORE_PASSWORD: ${{ secrets.WANGGA_STORE_PASSWORD }}
+          WANGGA_KEY_ALIAS: ${{ secrets.WANGGA_KEY_ALIAS }}
+          WANGGA_KEY_PASSWORD: ${{ secrets.WANGGA_KEY_PASSWORD }}
+        run: |
+          # Decode the release keystore from a secret so every CI build is signed
+          # with the same key as local builds (APKs then upgrade in place).
+          echo "${{ secrets.WANGGA_KEYSTORE_BASE64 }}" | base64 -d > wangga-release.jks
+          ls -la wangga-release.jks
+          ./gradlew assembleRelease --max-workers=2
+          ls -la app/build/outputs/apk/release/
+      - name: Verify APK signature
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs \
+            android/app/build/outputs/apk/release/app-release.apk | head -4
       - name: Rename APK to match release naming
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "WanggaSpa-${GITHUB_REF_NAME}.apk"
+        run: cp android/app/build/outputs/apk/release/app-release.apk "WanggaSpa-${GITHUB_REF_NAME}.apk"
       - name: Attach to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

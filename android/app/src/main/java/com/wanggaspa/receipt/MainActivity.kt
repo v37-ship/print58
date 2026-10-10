@@ -13,6 +13,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -77,6 +79,17 @@ fun CashierScreen() {
     var status by remember { mutableStateOf("") }
     var tab by remember { mutableStateOf(0) }
     // 0=Kasir 1=Riwayat 2=Master
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
+    var appVersion by remember { mutableStateOf("") }
+    var saveMessage by remember { mutableStateOf("") }
+    // Master Layanan state is hoisted so it survives tab switches.
+    var mName by remember { mutableStateOf("") }
+    var mDesc by remember { mutableStateOf("") }
+    var mPrice by remember { mutableStateOf("") }
+    var mStatus by remember { mutableStateOf("") }
+    var mFilter by remember { mutableStateOf("") }
+    var mSelected by remember { mutableStateOf<String?>(null) }
+
     var history by remember { mutableStateOf(listOf<Tx>()) }
     var dailyTotal by remember { mutableStateOf(0L) }
     val db = remember {
@@ -124,6 +137,46 @@ fun CashierScreen() {
         ActivityResultContracts.StartActivityForResult()
     ) { loadDevices() }
 
+    // SAF: no storage permission needed; the user picks where the file goes.
+    fun writeExport(uri: Uri) {
+        scope.launch {
+            saveMessage = try {
+                val rows = withContext(Dispatchers.IO) { db.tx().all() }
+                val csv = StringBuilder("id,date,time,customer,phone,promo,discount_type,discount_value,items,subtotal,total,payment\n")
+                rows.forEach { t ->
+                    csv.append("${t.id},${t.date},${t.time},${t.customer},${t.customerPhone},")
+                        .append("${t.promoPhone},${t.discountType},${t.discountValue},")
+                        .append("\"${t.itemsJson.replace("\"", "\"\"")}\",")
+                        .append("${t.subtotal},${t.total},${t.paymentStatus}\n")
+                }
+                withContext(Dispatchers.IO) {
+                    ctx.contentResolver.openOutputStream(uri)?.use { it.write(csv.toString().toByteArray()) }
+                        ?: error("tidak bisa menulis file")
+                }
+                "CSV tersimpan (${rows.size} transaksi)"
+            } catch (e: Exception) { "Gagal export: ${e.message}" }
+        }
+    }
+
+    fun backupDb(uri: Uri) {
+        scope.launch {
+            saveMessage = try {
+                val dbFile = ctx.getDatabasePath("wangga.db")
+                withContext(Dispatchers.IO) {
+                    ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                        dbFile.inputStream().use { it.copyTo(out) }
+                    } ?: error("tidak bisa menulis file")
+                }
+                "Backup database tersimpan (${dbFile.length()} bytes)"
+            } catch (e: Exception) { "Gagal backup: ${e.message}" }
+        }
+    }
+
+    var exportMode by remember { mutableStateOf("csv") }
+    val saveDocLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*")
+    ) { uri -> uri?.let { if (exportMode == "csv") writeExport(it) else backupDb(it) } }
+
     fun ensurePermissionThen(op: () -> Unit) {
         if (hasBtPermission()) { loadDevices(); op() }
         else permLauncher.launch(btPermissions())
@@ -132,8 +185,8 @@ fun CashierScreen() {
     fun selectedDevice(): BluetoothDevice? =
         devices.firstOrNull { it.address == selectedAddr }
 
-    fun refreshHistory() {
-        scope.launch {
+
+    fun refreshHistory() {        scope.launch {
             val all = withContext(Dispatchers.IO) { db.tx().all() }
             history = all
             val today = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date())
@@ -149,6 +202,15 @@ fun CashierScreen() {
         }
     }
 
+fun removeService(name: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { db.svc().delete(name) }
+            val gone = cart.removeAll { it.name == name }
+            mStatus = if (gone) "Dihapus: $name (juga dari keranjang)" else "Dihapus: $name"
+            if (mSelected == name) { mSelected = null; mName = ""; mDesc = ""; mPrice = "" }
+            refreshServices()
+        }
+    }
     fun cartSubtotal() = cart.sumOf { it.lineTotal }
     fun cartGrand() = cartSubtotal() - ReceiptTextFormatter.discountAmount(
         cartSubtotal(), if (discount.isBlank()) "" else discountType,
@@ -189,6 +251,9 @@ fun CashierScreen() {
     }
 
     LaunchedEffect(Unit) {
+        appVersion = try {
+            ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+        } catch (e: Exception) { "?" }
         if (hasBtPermission()) loadDevices()
         scope.launch {
             val seed = listOf(
@@ -204,6 +269,8 @@ fun CashierScreen() {
         Image(painterResource(R.drawable.logo_wangga), contentDescription = "Wangga Spa",
             modifier = Modifier.fillMaxWidth().height(72.dp), contentScale = ContentScale.Fit)
         Text("Kasir 58mm", style = MaterialTheme.typography.headlineSmall)
+        if (appVersion.isNotEmpty())
+            Text("Versi $appVersion", style = MaterialTheme.typography.labelSmall)
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { tab = 0 }) { Text("Kasir") }
             Button(onClick = { tab = 1; refreshHistory() }) { Text("Riwayat") }
@@ -212,6 +279,19 @@ fun CashierScreen() {
         if (tab == 1) {
             Text("Hari ini: Rp $dailyTotal — ${history.size} transaksi",
                 style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    exportMode = "csv"
+                    saveDocLauncher.launch("wangga-riwayat.csv")
+                }) { Text("Export CSV") }
+                Button(onClick = {
+                    exportMode = "db"
+                    saveDocLauncher.launch("wangga-backup.db")
+                }) { Text("Backup Database") }
+            }
+            if (saveMessage.isNotEmpty())
+                Text(saveMessage, style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 4.dp))
             history.forEach { t ->
                 Text("${t.date} ${t.time} | ${t.customer} | Rp ${t.total} | ${t.paymentStatus}",
                     modifier = Modifier.padding(top = 2.dp))
@@ -376,23 +456,6 @@ fun CashierScreen() {
         Text("Preview 58mm (32 kolom):", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
         Text(preview, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(top = 4.dp))
         } else if (tab == 2) {
-            var mName by remember { mutableStateOf("") }
-            var mDesc by remember { mutableStateOf("") }
-            var mPrice by remember { mutableStateOf("") }
-            var mStatus by remember { mutableStateOf("") }
-            var mFilter by remember { mutableStateOf("") }
-            var mSelected by remember { mutableStateOf<String?>(null) }
-
-            fun removeService(name: String) {
-                scope.launch {
-                    withContext(Dispatchers.IO) { db.svc().delete(name) }
-                    val gone = cart.removeAll { it.name == name }
-                    mStatus = if (gone) "Dihapus: $name (juga dari keranjang)" else "Dihapus: $name"
-                    if (mSelected == name) { mSelected = null; mName = ""; mDesc = ""; mPrice = "" }
-                    refreshServices()
-                }
-            }
-
             Text("Master Layanan", style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(mName, { mName = it }, label = { Text("Layanan") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(mDesc, { mDesc = it }, label = { Text("Deskripsi") }, modifier = Modifier.fillMaxWidth())
@@ -415,8 +478,8 @@ fun CashierScreen() {
                         }
                     }
                 }) { Text("Simpan") }
-                Button(onClick = { if (mName.isNotBlank()) removeService(mName.trim()) },
-                    enabled = mName.isNotBlank()) { Text("Hapus") }
+                Button(onClick = { pendingDelete = mName.trim() },
+                    enabled = mName.isNotBlank()) { Text("Hapus Terpilih") }
             }
             if (mSelected != null)
                 Text("Terpilih: $mSelected", style = MaterialTheme.typography.labelMedium,
@@ -444,11 +507,24 @@ fun CashierScreen() {
                                 Text("${svc.desc} — ${ReceiptTextFormatter.rupiah(svc.price)}",
                                     style = MaterialTheme.typography.bodySmall)
                             }
-                            TextButton(onClick = { removeService(svc.name) }) { Text("Hapus") }
+                            TextButton(onClick = { pendingDelete = svc.name }) { Text("✕") }
                         }
                     }
                 }
             }
+        }
+
+        pendingDelete?.let { name ->
+            AlertDialog(
+                onDismissRequest = { pendingDelete = null },
+                confirmButton = {
+                    TextButton(onClick = { val n = name; pendingDelete = null; removeService(n) }) {
+                        Text("Hapus")
+                    }
+                },
+                dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Batal") } },
+                title = { Text("Hapus layanan?") },
+                text = { Text("\"$name\" akan dihapus dari Master Layanan dan dari keranjang.") })
         }
     }
 }

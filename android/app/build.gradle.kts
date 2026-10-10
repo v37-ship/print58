@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -17,8 +19,27 @@ android {
         versionCode = wanggaVersion.replace(".", "").toInt()
         versionName = wanggaVersion
     }
+    // Release signing comes from android/keystore.properties (local) or env vars (CI).
+    // Every signed build — local or CI — uses the same key, so APKs upgrade in place.
+    signingConfigs {
+        create("release") {
+            val props = Properties().apply {
+                val f = rootProject.layout.projectDirectory.file("keystore.properties").asFile
+                if (f.exists()) f.inputStream().use { load(it) }
+            }
+            fun p(k: String) = (providers.environmentVariable(k).orNull ?: props.getProperty(k))
+            storeFile = p("storeFile")?.let { file(rootProject.layout.projectDirectory.file(it)) }
+            storePassword = p("storePassword")
+            keyAlias = p("keyAlias")
+            keyPassword = p("keyPassword")
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+            signingConfig = if (signingConfigs.getByName("release").storeFile != null)
+                signingConfigs.getByName("release") else null
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
