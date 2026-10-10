@@ -14,7 +14,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -62,6 +66,9 @@ fun CashierScreen() {
     val cart = remember { mutableStateListOf<ReceiptItem>() }
     var selService by remember { mutableStateOf(0) }
     var svcFilter by remember { mutableStateOf("") }
+    var pickerOpen by remember { mutableStateOf(false) }
+    var pickerQuery by remember { mutableStateOf("") }
+    var pickedName by remember { mutableStateOf<String?>(null) }
     var qtyText by remember { mutableStateOf("1") }
     var pay by remember { mutableStateOf("LUNAS Qris") }
     var discount by remember { mutableStateOf("") }
@@ -148,19 +155,19 @@ fun CashierScreen() {
         discount.trim().toLongOrNull() ?: 0L)
 
     fun filteredServices(): List<Svc> {
-        val q = svcFilter.trim()
+        val q = pickerQuery.trim()
         return if (q.isEmpty()) services
         else services.filter { it.name.contains(q, true) || it.desc.contains(q, true) }
     }
 
     fun addToCart() {
         val list = filteredServices()
-        val svc = list.getOrNull(selService.coerceIn(0, (list.size - 1).coerceAtLeast(0))) ?: return
+        val picked = list.firstOrNull { it.name == pickedName } ?: list.firstOrNull() ?: return
         val q = qtyText.trim().toIntOrNull() ?: 1
         if (q < 1) { status = "Qty harus >= 1"; return }
-        cart.removeAll { it.name == svc.name }
-        cart.add(ReceiptItem(svc.name, svc.desc, svc.price).apply { qty = q })
-        status = "Ditambah: ${svc.name} x$q"
+        cart.removeAll { it.name == picked.name }
+        cart.add(ReceiptItem(picked.name, picked.desc, picked.price).apply { qty = q })
+        status = "Ditambah: ${picked.name} x$q"
     }
 
     fun buildReceipt(): Receipt {
@@ -260,31 +267,59 @@ fun CashierScreen() {
         if (services.isEmpty()) {
             Text("Belum ada layanan. Tambahkan di tab Master.", modifier = Modifier.padding(top = 4.dp))
         } else {
-            val list = filteredServices()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(svcFilter, { svcFilter = it; selService = 0 },
-                    label = { Text("Cari layanan") }, modifier = Modifier.weight(1f))
+            // Selected service is remembered by NAME so it survives filtering/reordering of the catalog.
+            val picked = filteredServices().firstOrNull { it.name == pickedName }
+                ?: filteredServices().firstOrNull()
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { pickerQuery = ""; pickerOpen = true }) {
+                    Text(picked?.let { "${it.name} — ${ReceiptTextFormatter.rupiah(it.price)}" }
+                         ?: "Pilih Layanan")
+                }
                 Spacer(Modifier.width(8.dp))
                 OutlinedTextField(qtyText, { qtyText = it }, label = { Text("Qty") },
                     modifier = Modifier.width(72.dp))
                 Button(onClick = { addToCart() }) { Text("Tambah") }
             }
-            if (list.isEmpty()) {
-                Text("Tidak ada layanan yang cocok.", modifier = Modifier.padding(top = 4.dp))
-            } else {
-                list.forEachIndexed { i, svc ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 1.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = i == selService.coerceIn(0, list.size - 1),
-                            onClick = { selService = i })
-                        Column(Modifier.weight(1f)) {
-                            Text(svc.name, style = MaterialTheme.typography.bodyLarge)
-                            Text("${svc.desc} — ${ReceiptTextFormatter.rupiah(svc.price)}",
-                                style = MaterialTheme.typography.bodySmall)
+            if (picked?.desc?.isNotBlank() == true)
+                Text(picked.desc, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp))
+        }
+
+        if (pickerOpen) {
+            val results = filteredServices()
+            AlertDialog(
+                onDismissRequest = { pickerOpen = false },
+                confirmButton = {
+                    TextButton(onClick = { pickerOpen = false }) { Text("Tutup") }
+                },
+                title = { Text("Pilih Layanan (${results.size} dari ${services.size})") },
+                text = {
+                    Column {
+                        OutlinedTextField(pickerQuery, { pickerQuery = it },
+                            label = { Text("Cari layanan") }, singleLine = true,
+                            modifier = Modifier.fillMaxWidth())
+                        if (results.isEmpty()) {
+                            Text("Tidak ada layanan yang cocok.", modifier = Modifier.padding(top = 8.dp))
+                        } else {
+                            // Bounded height so 300 services behave like 5.
+                            LazyColumn(Modifier.heightIn(max = 260.dp).padding(top = 4.dp)) {
+                                items(results) { svc ->
+                                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(svc.name, style = MaterialTheme.typography.bodyLarge)
+                                            Text("${svc.desc} — ${ReceiptTextFormatter.rupiah(svc.price)}",
+                                                style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        RadioButton(
+                                            selected = svc.name == pickedName,
+                                            onClick = { pickedName = svc.name; pickerOpen = false })
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-            }
+                })
         }
         cart.forEach { item ->
             Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -345,6 +380,19 @@ fun CashierScreen() {
             var mDesc by remember { mutableStateOf("") }
             var mPrice by remember { mutableStateOf("") }
             var mStatus by remember { mutableStateOf("") }
+            var mFilter by remember { mutableStateOf("") }
+            var mSelected by remember { mutableStateOf<String?>(null) }
+
+            fun removeService(name: String) {
+                scope.launch {
+                    withContext(Dispatchers.IO) { db.svc().delete(name) }
+                    val gone = cart.removeAll { it.name == name }
+                    mStatus = if (gone) "Dihapus: $name (juga dari keranjang)" else "Dihapus: $name"
+                    if (mSelected == name) { mSelected = null; mName = ""; mDesc = ""; mPrice = "" }
+                    refreshServices()
+                }
+            }
+
             Text("Master Layanan", style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(mName, { mName = it }, label = { Text("Layanan") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(mDesc, { mDesc = it }, label = { Text("Deskripsi") }, modifier = Modifier.fillMaxWidth())
@@ -361,29 +409,45 @@ fun CashierScreen() {
                                     db.svc().upsert(Svc(mName.trim(), mDesc.trim(), price))
                                 }
                                 mStatus = "Tersimpan: ${mName.trim()}"
-                                mName = ""; mDesc = ""; mPrice = ""
+                                mSelected = mName.trim()
                                 refreshServices()
                             }
                         }
                     }
                 }) { Text("Simpan") }
-                Button(onClick = {
-                    scope.launch {
-                        if (mName.isNotBlank()) {
-                            withContext(Dispatchers.IO) { db.svc().delete(mName.trim()) }
-                            val gone = cart.removeAll { it.name == mName.trim() }
-                            mStatus = if (gone) "Dihapus: ${mName.trim()} (juga dari keranjang)"
-                                      else "Dihapus: ${mName.trim()}"
-                            mName = ""; mDesc = ""; mPrice = ""
-                            refreshServices()
+                Button(onClick = { if (mName.isNotBlank()) removeService(mName.trim()) },
+                    enabled = mName.isNotBlank()) { Text("Hapus") }
+            }
+            if (mSelected != null)
+                Text("Terpilih: $mSelected", style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 2.dp))
+            Text(mStatus, modifier = Modifier.padding(top = 4.dp))
+
+            OutlinedTextField(mFilter, { mFilter = it }, label = { Text("Cari layanan") },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            val shown = services.filter {
+                mFilter.isBlank() || it.name.contains(mFilter, true) || it.desc.contains(mFilter, true)
+            }
+            if (shown.isEmpty()) {
+                Text("Tidak ada layanan yang cocok.", modifier = Modifier.padding(top = 4.dp))
+            } else {
+                // Bounded height so 300 services behave like 5.
+                LazyColumn(Modifier.heightIn(max = 300.dp).padding(top = 4.dp)) {
+                    items(shown) { svc ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f).clickable {
+                                mSelected = svc.name; mName = svc.name
+                                mDesc = svc.desc; mPrice = svc.price.toString()
+                            }) {
+                                Text(svc.name, style = MaterialTheme.typography.bodyLarge)
+                                Text("${svc.desc} — ${ReceiptTextFormatter.rupiah(svc.price)}",
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            TextButton(onClick = { removeService(svc.name) }) { Text("Hapus") }
                         }
                     }
-                }) { Text("Hapus") }
-            }
-            Text(mStatus, modifier = Modifier.padding(top = 4.dp))
-            services.forEach { svc ->
-                Text("${svc.name} | ${svc.desc} | ${ReceiptTextFormatter.rupiah(svc.price)}",
-                    modifier = Modifier.padding(top = 2.dp))
+                }
             }
         }
     }
