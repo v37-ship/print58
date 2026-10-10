@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +61,7 @@ fun CashierScreen() {
     var services by remember { mutableStateOf(listOf<Svc>()) }
     val cart = remember { mutableStateListOf<ReceiptItem>() }
     var selService by remember { mutableStateOf(0) }
+    var svcFilter by remember { mutableStateOf("") }
     var qtyText by remember { mutableStateOf("1") }
     var pay by remember { mutableStateOf("LUNAS Qris") }
     var discount by remember { mutableStateOf("") }
@@ -145,8 +147,15 @@ fun CashierScreen() {
         cartSubtotal(), if (discount.isBlank()) "" else discountType,
         discount.trim().toLongOrNull() ?: 0L)
 
+    fun filteredServices(): List<Svc> {
+        val q = svcFilter.trim()
+        return if (q.isEmpty()) services
+        else services.filter { it.name.contains(q, true) || it.desc.contains(q, true) }
+    }
+
     fun addToCart() {
-        val svc = services.getOrNull(selService) ?: return
+        val list = filteredServices()
+        val svc = list.getOrNull(selService.coerceIn(0, (list.size - 1).coerceAtLeast(0))) ?: return
         val q = qtyText.trim().toIntOrNull() ?: 1
         if (q < 1) { status = "Qty harus >= 1"; return }
         cart.removeAll { it.name == svc.name }
@@ -251,19 +260,30 @@ fun CashierScreen() {
         if (services.isEmpty()) {
             Text("Belum ada layanan. Tambahkan di tab Master.", modifier = Modifier.padding(top = 4.dp))
         } else {
+            val list = filteredServices()
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = services[selService.coerceIn(0, services.size - 1)].name,
-                    onValueChange = {}, readOnly = true, label = { Text("Layanan") },
-                    modifier = Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { selService = (selService - 1).mod(services.size) }) { Text("<") }
-                Text("${selService + 1}/${services.size}")
-                Button(onClick = { selService = (selService + 1).mod(services.size) }) { Text(">") }
+                OutlinedTextField(svcFilter, { svcFilter = it; selService = 0 },
+                    label = { Text("Cari layanan") }, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 OutlinedTextField(qtyText, { qtyText = it }, label = { Text("Qty") },
                     modifier = Modifier.width(72.dp))
                 Button(onClick = { addToCart() }) { Text("Tambah") }
+            }
+            if (list.isEmpty()) {
+                Text("Tidak ada layanan yang cocok.", modifier = Modifier.padding(top = 4.dp))
+            } else {
+                list.forEachIndexed { i, svc ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = i == selService.coerceIn(0, list.size - 1),
+                            onClick = { selService = i })
+                        Column(Modifier.weight(1f)) {
+                            Text(svc.name, style = MaterialTheme.typography.bodyLarge)
+                            Text("${svc.desc} — ${ReceiptTextFormatter.rupiah(svc.price)}",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
             }
         }
         cart.forEach { item ->
