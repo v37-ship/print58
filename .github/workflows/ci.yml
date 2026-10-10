@@ -76,6 +76,8 @@ jobs:
       - name: Build Android APK
         working-directory: android
         run: ./gradlew assembleDebug --max-workers=2
+      - name: Rename APK to match release naming
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "WanggaSpa-${GITHUB_REF_NAME}.apk"
       - name: Attach to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,5 +85,5 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --title "WanggaSpa $GITHUB_REF_NAME" \
               --notes "Auto-built by CI."
-          gh release upload "$GITHUB_REF_NAME" publish/win-x64/WanggaSpa.exe \
-            android/app/build/outputs/apk/debug/app-debug.apk --clobber
+          gh release upload "$GITHUB_REF_NAME" "WanggaSpa-${GITHUB_REF_NAME}.apk" \
+            publish/win-x64/WanggaSpa.exe --clobber
