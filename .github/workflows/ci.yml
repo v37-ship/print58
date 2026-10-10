@@ -83,5 +83,5 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --title "WanggaSpa $GITHUB_REF_NAME" \
               --notes "Auto-built by CI."
-          gh release upload "$GITHUB_REF_NAME" windows/publish/win-x64/WanggaSpa.exe \
+          gh release upload "$GITHUB_REF_NAME" publish/win-x64/WanggaSpa.exe \
             android/app/build/outputs/apk/debug/app-debug.apk --clobber
