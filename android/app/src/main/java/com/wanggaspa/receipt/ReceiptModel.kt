@@ -1,6 +1,12 @@
 package com.wanggaspa.receipt
 
-data class ReceiptItem(val name: String, val desc: String, val price: Long)
+/** One receipt line. Qty > 1 prints as "Name xN". */
+data class ReceiptItem(val name: String, val desc: String, val price: Long) {
+    var qty: Int = 1
+    val lineTotal: Long get() = price * qty
+    val label: String get() = if (qty > 1) "$name x$qty" else name
+}
+
 data class StoreInfo(val name: String, val tagline: String, val address: String, val contact: String)
 data class Receipt(
     val store: StoreInfo,
@@ -12,13 +18,14 @@ data class Receipt(
     val date: String,
     val time: String,
     val items: List<ReceiptItem>,
-    val subtotal: Long,
     val paymentStatus: String,
     val footerLines: List<String>
 ) {
-    /** Single source of truth for the payable amount. Never negative. */
-    val grandTotal: Long
-        get() = subtotal - ReceiptTextFormatter.discountAmount(subtotal, discountType, discountValue)
+    /** Sum of line totals — single source of truth, so callers cannot disagree. */
+    val subtotal: Long get() = items.sumOf { it.lineTotal }
+
+    /** Payable amount after discount. Never negative. */
+    val grandTotal: Long get() = subtotal - ReceiptTextFormatter.discountAmount(subtotal, discountType, discountValue)
 }
 
 fun sampleReceipt() = Receipt(
@@ -31,7 +38,7 @@ fun sampleReceipt() = Receipt(
         ReceiptItem("Inflaren", "Durasi 30 menit", 50000),
         ReceiptItem("Transport PP (HM Care)", "Jarak & antar jemput", 15000)
     ),
-    200000, "LUNAS Qris",
+    "LUNAS Qris",
     listOf(
         "TERIMA KASIH ATAS KUNJUNGAN ANDA",
         "Kesehatan & Kebugaran Prioritas",

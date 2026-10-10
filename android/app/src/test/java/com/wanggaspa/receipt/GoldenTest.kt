@@ -26,7 +26,9 @@ class GoldenTest {
         "discount-10pct" to base().copy(discountType = "%", discountValue = 10),
         "discount-nominal" to base().copy(discountType = "Rp", discountValue = 25000),
         "discount-clamped" to base().copy(discountType = "%", discountValue = 150),
-        "empty-phone" to base().copy(customerPhone = " ")
+        "empty-phone" to base().copy(customerPhone = " "),
+        "qty-multi" to base().copy(
+            items = base().items.mapIndexed { i, it -> if (i == 0) it.apply { qty = 2 } else it })
     )
 
     @Test

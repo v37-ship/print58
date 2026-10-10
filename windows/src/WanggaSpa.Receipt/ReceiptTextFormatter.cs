@@ -105,7 +105,7 @@ public static class ReceiptTextFormatter
         });
         foreach (var it in r.Items)
         {
-            b.Add(TwoCol(it.Name, Rupiah(it.Price)));
+            b.Add(TwoCol(it.Label, Rupiah(it.LineTotal)));
             if (!string.IsNullOrWhiteSpace(it.Desc))
                 foreach (var d in Wrap(it.Desc, Width)) b.Add(d);
         }
@@ -132,9 +132,8 @@ public static class ReceiptTextFormatter
             new("Inflaren", "Durasi 30 menit", 50000),
             new("Transport PP (HM Care)", "Jarak & antar jemput", 15000),
         },
-        200000, "LUNAS Qris",
-        new List<string> {
-            "TERIMA KASIH ATAS KUNJUNGAN ANDA",
+        "LUNAS Qris",
+        new List<string> {            "TERIMA KASIH ATAS KUNJUNGAN ANDA",
             "Kesehatan & Kebugaran Prioritas",
             "***Wangga Baby Mom Woman Spa***" });
 }

@@ -40,7 +40,7 @@ public static class EscPosBuilder
         foreach (var it in r.Items)
         {
             Add(b, 0x1B, 0x45, 0x01);
-            foreach (var l in ReceiptTextFormatter.TwoCol(it.Name, ReceiptTextFormatter.Rupiah(it.Price)).Split('\n')) Line(b, l);
+            foreach (var l in ReceiptTextFormatter.TwoCol(it.Label, ReceiptTextFormatter.Rupiah(it.LineTotal)).Split('\n')) Line(b, l);
             Add(b, 0x1B, 0x45, 0x00);
             if (!string.IsNullOrWhiteSpace(it.Desc))
                 foreach (var l in ReceiptTextFormatter.Wrap(it.Desc, 32)) Line(b, l);

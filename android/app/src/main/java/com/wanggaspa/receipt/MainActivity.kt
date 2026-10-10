@@ -57,13 +57,17 @@ fun CashierScreen() {
     var customer by remember { mutableStateOf("Mama Isaac") }
     var nomorHp by remember { mutableStateOf("") }
     var promo by remember { mutableStateOf("") }
-    var itemsText by remember { mutableStateOf("Massage Kids | Durasi 60 menit | 135000\nInflaren | Durasi 30 menit | 50000\nTransport PP (HM Care) | Jarak & antar jemput | 15000") }
+    var services by remember { mutableStateOf(listOf<Svc>()) }
+    val cart = remember { mutableStateListOf<ReceiptItem>() }
+    var selService by remember { mutableStateOf(0) }
+    var qtyText by remember { mutableStateOf("1") }
     var pay by remember { mutableStateOf("LUNAS Qris") }
     var discount by remember { mutableStateOf("") }
     var discountType by remember { mutableStateOf("%") }
     var preview by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var tab by remember { mutableStateOf(0) }
+    // 0=Kasir 1=Riwayat 2=Master
     var history by remember { mutableStateOf(listOf<Tx>()) }
     var dailyTotal by remember { mutableStateOf(0L) }
     val db = remember {
@@ -128,15 +132,32 @@ fun CashierScreen() {
         }
     }
 
+    fun refreshServices() {
+        scope.launch {
+            services = withContext(Dispatchers.IO) { db.svc().all() }
+            val today = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date())
+            dailyTotal = withContext(Dispatchers.IO) { db.tx().dailyTotal(today) }
+        }
+    }
+
+    fun cartSubtotal() = cart.sumOf { it.lineTotal }
+    fun cartGrand() = cartSubtotal() - ReceiptTextFormatter.discountAmount(
+        cartSubtotal(), if (discount.isBlank()) "" else discountType,
+        discount.trim().toLongOrNull() ?: 0L)
+
+    fun addToCart() {
+        val svc = services.getOrNull(selService) ?: return
+        val q = qtyText.trim().toIntOrNull() ?: 1
+        if (q < 1) { status = "Qty harus >= 1"; return }
+        cart.removeAll { it.name == svc.name }
+        cart.add(ReceiptItem(svc.name, svc.desc, svc.price).apply { qty = q })
+        status = "Ditambah: ${svc.name} x$q"
+    }
+
     fun buildReceipt(): Receipt {
         val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.US)
         val stf = SimpleDateFormat("HH:mm", Locale.US)
         val now = Date()
-        val items = itemsText.lines().mapNotNull { ln ->
-            val p = ln.split("|")
-            if (p.size < 3) null else ReceiptItem(p[0].trim(), p[1].trim(), p[2].trim().toLongOrNull() ?: 0L)
-        }
-        val total = items.sumOf { it.price }
         val discVal = discount.trim().toLongOrNull() ?: 0L
         val discType = if (discount.trim().isEmpty()) "" else discountType
         return Receipt(
@@ -144,14 +165,24 @@ fun CashierScreen() {
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
                 "Telp: 08211347294 | IG: @wangggasbabymomwoman"),
             customer, nomorHp, promo, discType, discVal, sdf.format(now), stf.format(now) + " WIB",
-            items, total, pay,
+            cart.toList(), pay,
             listOf("TERIMA KASIH ATAS KUNJUNGAN ANDA",
                 "Kesehatan & Kebugaran Prioritas",
                 "***Wangga Baby Mom Woman Spa***")
         )
     }
 
-    LaunchedEffect(Unit) { if (hasBtPermission()) loadDevices() }
+    LaunchedEffect(Unit) {
+        if (hasBtPermission()) loadDevices()
+        scope.launch {
+            val seed = listOf(
+                Svc("Massage Kids", "Durasi 60 menit", 135000),
+                Svc("Inflaren", "Durasi 30 menit", 50000),
+                Svc("Transport PP (HM Care)", "Jarak & antar jemput", 15000))
+            withContext(Dispatchers.IO) { seed.forEach { db.svc().upsert(it) } }
+            refreshServices()
+        }
+    }
 
     Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState())) {
         Image(painterResource(R.drawable.logo_wangga), contentDescription = "Wangga Spa",
@@ -160,6 +191,7 @@ fun CashierScreen() {
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { tab = 0 }) { Text("Kasir") }
             Button(onClick = { tab = 1; refreshHistory() }) { Text("Riwayat") }
+            Button(onClick = { tab = 2; refreshServices() }) { Text("Master") }
         }
         if (tab == 1) {
             Text("Hari ini: Rp $dailyTotal — ${history.size} transaksi",
@@ -168,7 +200,7 @@ fun CashierScreen() {
                 Text("${t.date} ${t.time} | ${t.customer} | Rp ${t.total} | ${t.paymentStatus}",
                     modifier = Modifier.padding(top = 2.dp))
             }
-        } else {
+        } else if (tab == 0) {
         // ---- Printer card ----
         Text("Printer Bluetooth", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
         if (!btGranted) {
@@ -215,8 +247,37 @@ fun CashierScreen() {
             Spacer(Modifier.width(4.dp))
             Button(onClick = { discountType = "Rp" }, enabled = discountType != "Rp") { Text("Rp") }
         }
-        OutlinedTextField(itemsText, { itemsText = it }, label = { Text("Layanan | Deskripsi | Harga") },
-            modifier = Modifier.fillMaxWidth().height(140.dp))
+        Text("Tambah layanan", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+        if (services.isEmpty()) {
+            Text("Belum ada layanan. Tambahkan di tab Master.", modifier = Modifier.padding(top = 4.dp))
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = services[selService.coerceIn(0, services.size - 1)].name,
+                    onValueChange = {}, readOnly = true, label = { Text("Layanan") },
+                    modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { selService = (selService - 1).mod(services.size) }) { Text("<") }
+                Text("${selService + 1}/${services.size}")
+                Button(onClick = { selService = (selService + 1).mod(services.size) }) { Text(">") }
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(qtyText, { qtyText = it }, label = { Text("Qty") },
+                    modifier = Modifier.width(72.dp))
+                Button(onClick = { addToCart() }) { Text("Tambah") }
+            }
+        }
+        cart.forEach { item ->
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${item.label} — ${ReceiptTextFormatter.rupiah(item.lineTotal)}",
+                    modifier = Modifier.weight(1f))
+                Button(onClick = { cart.remove(item) }) { Text("Hapus") }
+            }
+        }
+        if (cart.isNotEmpty()) {
+            Text("Subtotal: ${ReceiptTextFormatter.rupiah(cartSubtotal())} — " +
+                 "TOTAL: ${ReceiptTextFormatter.rupiah(cartGrand())}",
+                style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+        }
         OutlinedTextField(pay, { pay = it }, label = { Text("Status Pembayaran") }, modifier = Modifier.fillMaxWidth())
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { preview = ReceiptTextFormatter.buildPreview(buildReceipt()) }) { Text("Preview") }
@@ -233,7 +294,7 @@ fun CashierScreen() {
                                 customer = r.customer, customerPhone = r.customerPhone,
                                 promoPhone = r.promoCode,
                                 discountType = r.discountType, discountValue = r.discountValue,
-                                itemsJson = r.items.joinToString(";") { "${it.name}|${it.desc}|${it.price}" },
+                                itemsJson = ReceiptJson.itemsToJson(r.items),
                                 subtotal = r.subtotal, total = r.grandTotal,
                                 paymentStatus = r.paymentStatus))
                         }
@@ -259,6 +320,49 @@ fun CashierScreen() {
         Text(status, modifier = Modifier.padding(top = 4.dp))
         Text("Preview 58mm (32 kolom):", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
         Text(preview, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(top = 4.dp))
+        } else if (tab == 2) {
+            var mName by remember { mutableStateOf("") }
+            var mDesc by remember { mutableStateOf("") }
+            var mPrice by remember { mutableStateOf("") }
+            var mStatus by remember { mutableStateOf("") }
+            Text("Master Layanan", style = MaterialTheme.typography.headlineSmall)
+            OutlinedTextField(mName, { mName = it }, label = { Text("Layanan") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(mDesc, { mDesc = it }, label = { Text("Deskripsi") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(mPrice, { mPrice = it }, label = { Text("Harga") }, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    scope.launch {
+                        val price = mPrice.trim().toLongOrNull()
+                        when {
+                            mName.isBlank() -> mStatus = "Nama layanan wajib diisi"
+                            price == null -> mStatus = "Harga harus angka"
+                            else -> {
+                                withContext(Dispatchers.IO) {
+                                    db.svc().upsert(Svc(mName.trim(), mDesc.trim(), price))
+                                }
+                                mStatus = "Tersimpan: ${mName.trim()}"
+                                mName = ""; mDesc = ""; mPrice = ""
+                                refreshServices()
+                            }
+                        }
+                    }
+                }) { Text("Simpan") }
+                Button(onClick = {
+                    scope.launch {
+                        if (mName.isNotBlank()) {
+                            withContext(Dispatchers.IO) { db.svc().delete(mName.trim()) }
+                            mStatus = "Dihapus: ${mName.trim()}"
+                            mName = ""; mDesc = ""; mPrice = ""
+                            refreshServices()
+                        }
+                    }
+                }) { Text("Hapus") }
+            }
+            Text(mStatus, modifier = Modifier.padding(top = 4.dp))
+            services.forEach { svc ->
+                Text("${svc.name} | ${svc.desc} | ${ReceiptTextFormatter.rupiah(svc.price)}",
+                    modifier = Modifier.padding(top = 2.dp))
+            }
         }
     }
 }

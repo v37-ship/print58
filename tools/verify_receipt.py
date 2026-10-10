@@ -76,7 +76,7 @@ def discount_amount(subtotal, dtype, dval):
     return 0
 
 
-def build_preview(t):
+def build_preview(t, subtotal=None):
     b = [center(t["store"]["name"]), center(t["store"]["tagline"]),
          center(t["store"]["address"]), center(t["store"]["contact"]),
          "-" * WIDTH,
@@ -86,15 +86,17 @@ def build_preview(t):
         b.append(two_col(f"Promo     : {t['promo_code'].strip()}", ""))
     b += ["-" * WIDTH, two_col("Layanan / Produk", "Total"), "-" * WIDTH]
     for it in t["items"]:
-        b.append(two_col(it["name"], rupiah(it["price"])))
+        q = it.get("qty", 1)
+        b.append(two_col(f"{it['name']} x{q}" if q > 1 else it["name"], rupiah(it["price"] * q)))
         if it["desc"].strip():
             b += wrap(it["desc"])
-    b += ["-" * WIDTH, two_col("Subtotal", rupiah(t["subtotal"]))]
-    disc = discount_amount(t["subtotal"], t.get("discount_type", ""), t.get("discount_value", 0))
+    sub = subtotal if subtotal is not None else sum(i["price"] * i.get("qty", 1) for i in t["items"])
+    b += ["-" * WIDTH, two_col("Subtotal", rupiah(sub))]
+    disc = discount_amount(sub, t.get("discount_type", ""), t.get("discount_value", 0))
     if disc > 0:
         b.append(two_col("Diskon", "-" + rupiah(disc)) if t.get("discount_type") != "%"
                  else two_col(f"Diskon {min(max(t.get('discount_value', 0), 0), 100)}%", "-" + rupiah(disc)))
-    b += ["-" * WIDTH, two_col("TOTAL AKHIR", rupiah(t["subtotal"] - disc)),
+    b += ["-" * WIDTH, two_col("TOTAL AKHIR", rupiah(sub - disc)),
           two_col("Status Pembayaran", t["payment_status"]),
           "-" * WIDTH]
     for f in t["footer"]:
@@ -109,6 +111,8 @@ CASES = {
     "discount-nominal": lambda t: dict(t, discount_type="Rp", discount_value=25000),
     "discount-clamped": lambda t: dict(t, discount_type="%", discount_value=150),
     "empty-phone": lambda t: dict(t, customer_phone=" "),
+    "qty-multi": lambda t: dict(t, items=[dict(it, qty=2) if i == 0 else it
+                                          for i, it in enumerate(t["items"])]),
 }
 
 t = json.loads((ROOT / "shared-spec" / "sample-transaction.json").read_text())

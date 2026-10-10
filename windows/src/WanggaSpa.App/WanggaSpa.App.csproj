@@ -7,7 +7,10 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>WanggaSpa</AssemblyName>
     <ApplicationIcon>logo.ico</ApplicationIcon>
-    <Version>1.7.0</Version>
+    <Version>$(WanggaVersion)</Version>
+  </PropertyGroup>
+  <PropertyGroup>
+    <WanggaVersion Condition=" '$(WanggaVersion)' == '' ">1.9.0</WanggaVersion>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WanggaSpa.Receipt\WanggaSpa.Receipt.csproj" />

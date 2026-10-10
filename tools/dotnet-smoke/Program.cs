@@ -18,6 +18,11 @@ var cases = new (string Name, Receipt R)[]
     ("discount-nominal", ReceiptTextFormatter.Sample() with { DiscountType = "Rp", DiscountValue = 25000 }),
     ("discount-clamped", ReceiptTextFormatter.Sample() with { DiscountType = "%", DiscountValue = 150 }),
     ("empty-phone", ReceiptTextFormatter.Sample() with { CustomerPhone = " " }),
+    ("qty-multi", ReceiptTextFormatter.Sample() with
+    {
+        Items = ReceiptTextFormatter.Sample().Items
+            .Select((i, idx) => idx == 0 ? i with { Qty = 2 } : i).ToList()
+    }),
 };
 
 foreach (var (name, r) in cases)

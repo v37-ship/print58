@@ -9,6 +9,20 @@ public sealed class Db
     readonly string _path;
     public Db(string path) { _path = path; Init(); }
 
+    void SeedServices(SqliteConnection c)
+    {
+        foreach (var (n, d, p) in new (string, string, long)[]
+                 { ("Massage Kids", "Durasi 60 menit", 135000),
+                   ("Inflaren", "Durasi 30 menit", 50000),
+                   ("Transport PP (HM Care)", "Jarak & antar jemput", 15000) })
+        {
+            var cmd = new SqliteCommand("INSERT OR IGNORE INTO services(name,desc,price) VALUES($n,$d,$p)", c);
+            cmd.Parameters.AddWithValue("$n", n); cmd.Parameters.AddWithValue("$d", d);
+            cmd.Parameters.AddWithValue("$p", p);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
     void Init()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
@@ -32,6 +46,7 @@ public sealed class Db
         catch (SqliteException) { }
         try { new SqliteCommand("ALTER TABLE transactions ADD COLUMN discount_value INTEGER NOT NULL DEFAULT 0", c).ExecuteNonQuery(); }
         catch (SqliteException) { }
+        SeedServices(c);
         foreach (var (k, v) in new Dictionary<string, string> {
             ["store_name"] = "WANGGA SPA",
             ["tagline"] = "Sehat • Relaks • Bahagia",
@@ -99,15 +114,65 @@ public sealed class Db
         return (long)(cmd.ExecuteScalar() ?? 0L);
     }
 
+    // ---- services master ----
+    public sealed record SvcRow(string Name, string Desc, long Price);
+
+    public List<SvcRow> AllServices()
+    {
+        var res = new List<SvcRow>();
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand("SELECT name,desc,price FROM services ORDER BY name", c);
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read()) res.Add(new SvcRow(rd.GetString(0), rd.GetString(1), rd.GetInt64(2)));
+        return res;
+    }
+
+    public void SaveService(string name, string desc, long price)
+    {
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand(
+            "INSERT INTO services(name,desc,price) VALUES($n,$d,$p) " +
+            "ON CONFLICT(name) DO UPDATE SET desc=$d, price=$p", c);
+        cmd.Parameters.AddWithValue("$n", name);
+        cmd.Parameters.AddWithValue("$d", desc);
+        cmd.Parameters.AddWithValue("$p", price);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteService(string name)
+    {
+        using var c = new SqliteConnection($"Data Source={_path}");
+        c.Open();
+        var cmd = new SqliteCommand("DELETE FROM services WHERE name=$n", c);
+        cmd.Parameters.AddWithValue("$n", name);
+        cmd.ExecuteNonQuery();
+    }
+
     public static string ToCsv(IEnumerable<TxRow> rows)
     {
-        var sb = new System.Text.StringBuilder("id,date,time,customer,phone,promo,discount_type,discount_value,subtotal,total,payment\n");
+        var sb = new System.Text.StringBuilder("id,date,time,customer,phone,promo,discount_type,discount_value,items,subtotal,total,payment\n");
         foreach (var r in rows)
-            sb.Append($"{r.Id},{r.Date},{r.Time},{Csv(r.Customer)},{Csv(r.CustomerPhone)},{Csv(r.Promo)},{r.DiscountType},{r.DiscountValue},{r.Subtotal},{r.Total},{Csv(r.Pay)}\n");
+            sb.Append($"{r.Id},{r.Date},{r.Time},{Csv(r.Customer)},{Csv(r.CustomerPhone)},{Csv(r.Promo)},{r.DiscountType},{r.DiscountValue},{Csv(ItemsSummary(r.ItemsJson))},{r.Subtotal},{r.Total},{Csv(r.Pay)}\n");
         return sb.ToString();
         static string Csv(string s) => s.Contains(',') || s.Contains('"') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
     }
 
     public static string ItemsJson(List<Receipt.ReceiptItem> items) =>
-        JsonSerializer.Serialize(items.Select(i => new { i.Name, i.Desc, i.Price }));
+        JsonSerializer.Serialize(items.Select(i => new { i.Name, i.Desc, i.Price, i.Qty }));
+
+    /// <summary>"Massage Kids x2 @135000; ..." for CSV export.</summary>
+    public static string ItemsSummary(string itemsJson)
+    {
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<ReceiptJson>>(itemsJson) ?? new();
+            return string.Join("; ", items.Select(i =>
+                i.Qty > 1 ? $"{i.Name} x{i.Qty} @{i.Price}" : $"{i.Name} @{i.Price}"));
+        }
+        catch { return itemsJson ?? ""; }
+    }
+
+    private sealed record ReceiptJson(string Name, string Desc, long Price, int Qty);
 }

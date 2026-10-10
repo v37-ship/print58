@@ -12,8 +12,10 @@ android {
         applicationId = "com.wanggaspa.receipt"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.7"
+        // Single version source: ../../shared-spec/VERSION (e.g. "1.9")
+        val wanggaVersion = providers.fileContents(rootProject.layout.projectDirectory.file("../shared-spec/VERSION")).asText.get().trim()
+        versionCode = wanggaVersion.replace(".", "").toInt()
+        versionName = wanggaVersion
     }
     buildTypes {
         release { isMinifyEnabled = false }

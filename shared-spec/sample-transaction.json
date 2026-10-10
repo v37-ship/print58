@@ -13,9 +13,24 @@
   "date": "28/09/2026",
   "time": "14:15 WIB",
   "items": [
-    { "name": "Massage Kids", "desc": "Durasi 60 menit", "price": 135000 },
-    { "name": "Inflaren", "desc": "Durasi 30 menit", "price": 50000 },
-    { "name": "Transport PP (HM Care)", "desc": "Jarak & antar jemput", "price": 15000 }
+    {
+      "name": "Massage Kids",
+      "desc": "Durasi 60 menit",
+      "price": 135000,
+      "qty": 1
+    },
+    {
+      "name": "Inflaren",
+      "desc": "Durasi 30 menit",
+      "price": 50000,
+      "qty": 1
+    },
+    {
+      "name": "Transport PP (HM Care)",
+      "desc": "Jarak & antar jemput",
+      "price": 15000,
+      "qty": 1
+    }
   ],
   "subtotal": 200000,
   "total": 200000,

@@ -39,7 +39,7 @@ object EscPosBuilder {
 
         for (it in r.items) {
             bytes(b, 0x1B, 0x45, 0x01)
-            ReceiptTextFormatter.twoCol(it.name, ReceiptTextFormatter.rupiah(it.price)).split("\n").forEach { l -> line(b, l) }
+            ReceiptTextFormatter.twoCol(it.label, ReceiptTextFormatter.rupiah(it.lineTotal)).split("\n").forEach { l -> line(b, l) }
             bytes(b, 0x1B, 0x45, 0x00)
             if (it.desc.isNotBlank())
                 ReceiptTextFormatter.wrap(it.desc).forEach { l -> line(b, l) }

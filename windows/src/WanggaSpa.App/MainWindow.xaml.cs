@@ -1,7 +1,9 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using WanggaSpa.Receipt;
 using ReceiptModel = WanggaSpa.Receipt.Receipt;
+using SvcRow = WanggaSpa.App.Db.SvcRow;
 
 namespace WanggaSpa.App;
 
@@ -12,6 +14,7 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "WanggaSpa", "wangga.db");
     readonly Db _db = new(DbPath);
+    readonly List<ReceiptItem> _cart = new();
     ReceiptModel? _current;
 
     public MainWindow()
@@ -20,10 +23,12 @@ public partial class MainWindow : Window
         VersionStatus.Text = $"v{AppInfo.Version}";
         PreviewKeyDown += OnKey;
         OnRefreshPrinters(null, null);
+        OnRefreshServices();
         OnPreview(null, null);
         OnRefreshHistory(null, null);
     }
 
+    // ---------- menu ----------
     void OnKey(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.System &&
@@ -41,7 +46,7 @@ public partial class MainWindow : Window
         }
     }
 
-    void OnPrinterChanged(object? s, System.Windows.Controls.SelectionChangedEventArgs e)
+    void OnPrinterChanged(object? s, SelectionChangedEventArgs e)
     {
         if (PrinterBox.SelectedItem is not null)
             PrinterStatus.Text = "Printer: " + PrinterBox.SelectedItem;
@@ -51,23 +56,84 @@ public partial class MainWindow : Window
     {
         PrinterBox.ItemsSource = WindowsPrinterService.ListPrinters();
         if (PrinterBox.Items.Count == 0)
-            StatusText.Text = "Printer tidak ditemukan. Install driver thermal dulu di Settings > Bluetooth & devices > Printers.";
+            StatusText.Text = "Printer tidak ditemukan. Install driver thermal dulu.";
     }
 
+    // ---------- services master ----------
+    void OnRefreshServices()
+    {
+        ServiceGrid.ItemsSource = _db.AllServices();
+        ServiceBox.ItemsSource = _db.AllServices();
+    }
+
+    void OnServiceSelected(object? s, SelectionChangedEventArgs e)
+    {
+        if (ServiceGrid.SelectedItem is not SvcRow svc) return;
+        SvcName.Text = svc.Name;
+        SvcDesc.Text = svc.Desc;
+        SvcPrice.Text = svc.Price.ToString();
+    }
+
+    void OnSaveService(object? s, RoutedEventArgs? e)
+    {
+        var name = SvcName.Text.Trim();
+        if (name.Length == 0) { SvcStatus.Text = "Nama layanan wajib diisi."; return; }
+        if (!long.TryParse(SvcPrice.Text.Trim(), out long price))
+        { SvcStatus.Text = "Harga harus angka."; return; }
+        _db.SaveService(name, SvcDesc.Text.Trim(), price);
+        SvcStatus.Text = $"Tersimpan: {name}";
+        OnRefreshServices();
+    }
+
+    void OnDeleteService(object? s, RoutedEventArgs? e)
+    {
+        var name = SvcName.Text.Trim();
+        if (name.Length == 0) return;
+        _db.DeleteService(name);
+        SvcName.Clear(); SvcDesc.Clear(); SvcPrice.Clear();
+        SvcStatus.Text = $"Dihapus: {name}";
+        OnRefreshServices();
+    }
+
+    // ---------- cart ----------
+    void OnAddToCart(object? s, RoutedEventArgs? e)
+    {
+        if (ServiceBox.SelectedItem is not SvcRow svc) { StatusText.Text = "Pilih layanan dulu."; return; }
+        if (!int.TryParse(QtyBox.Text.Trim(), out int qty) || qty < 1)
+        { StatusText.Text = "Qty harus angka >= 1."; return; }
+        var existing = _cart.FirstOrDefault(i => i.Name == svc.Name);
+        if (existing is not null) _cart.Remove(existing);
+        _cart.Add(new ReceiptItem(svc.Name, svc.Desc, svc.Price) { Qty = qty });
+        RefreshCart();
+        StatusText.Text = $"Ditambah: {svc.Name} x{qty}";
+    }
+
+    void OnRemoveFromCart(object? s, RoutedEventArgs? e)
+    {
+        if (s is Button { DataContext: ReceiptItem item }) _cart.Remove(item);
+        RefreshCart();
+    }
+
+    void OnClearCart(object? s, RoutedEventArgs? e)
+    {
+        _cart.Clear();
+        RefreshCart();
+    }
+
+    void RefreshCart()
+    {
+        CartGrid.ItemsSource = null;
+        CartGrid.ItemsSource = _cart.ToList();
+        OnPreview(null, null);
+    }
+
+    // ---------- receipt ----------
     ReceiptModel BuildReceipt()
     {
         var now = DateTime.Now;
-        var items = new List<ReceiptItem>();
-        foreach (var line in ItemsBox.Text.Split('\n'))
-        {
-            var p = line.Split('|');
-            if (p.Length < 3) continue;
-            items.Add(new ReceiptItem(p[0].Trim(), p[1].Trim(), long.Parse(p[2].Trim())));
-        }
-        long total = items.Sum(i => i.Price);
         long.TryParse(DiscountBox.Text.Trim(), out long discVal);
         string discType = string.IsNullOrWhiteSpace(DiscountBox.Text) ? ""
-            : ((System.Windows.Controls.ComboBoxItem)DiscountTypeBox.SelectedItem).Content.ToString()!;
+            : ((ComboBoxItem)DiscountTypeBox.SelectedItem).Content.ToString()!;
         return new ReceiptModel(
             new StoreInfo("WANGGA SPA", "Sehat • Relaks • Bahagia",
                 "Kayu Putih II No.32, Pulo Gadung, Jaktim",
@@ -75,8 +141,8 @@ public partial class MainWindow : Window
             CustomerBox.Text.Trim(), CustomerPhoneBox.Text.Trim(), PromoBox.Text.Trim(),
             discType, discVal,
             now.ToString("dd/MM/yyyy"), now.ToString("HH:mm") + " WIB",
-            items, total,
-            ((System.Windows.Controls.ComboBoxItem)PayBox.SelectedItem).Content.ToString()!,
+            _cart.ToList(),
+            ((ComboBoxItem)PayBox.SelectedItem).Content.ToString()!,
             new List<string> {
                 "TERIMA KASIH ATAS KUNJUNGAN ANDA",
                 "Kesehatan & Kebugaran Prioritas",
@@ -85,7 +151,12 @@ public partial class MainWindow : Window
 
     void OnPreview(object? s, RoutedEventArgs? e)
     {
-        try { _current = BuildReceipt(); PreviewText.Text = ReceiptTextFormatter.BuildPreview(_current); }
+        try
+        {
+            _current = BuildReceipt();
+            PreviewText.Text = ReceiptTextFormatter.BuildPreview(_current);
+            TotalText.Text = "TOTAL: " + ReceiptTextFormatter.Rupiah(_current.GrandTotal);
+        }
         catch (Exception ex) { StatusText.Text = "Error: " + ex.Message; }
     }
 
@@ -118,6 +189,7 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = "Gagal print: " + ex.Message; }
     }
 
+    // ---------- history ----------
     void OnRefreshHistory(object? s, RoutedEventArgs? e)
     {
         try
@@ -140,6 +212,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- help menu ----------
     string AboutDetail()
     {
         int txCount = 0;
@@ -162,9 +235,9 @@ public partial class MainWindow : Window
         "CARA PAKAI\n\n" +
         "1. Install driver printer thermal (mis. POS-58).\n" +
         "2. Pilih printer di dropdown, klik Refresh bila kosong.\n" +
-        "3. Klik Test Print untuk struk contoh sesuai form.\n" +
-        "4. Isi Pelanggan, Nomor HP, Promo (boleh kosong), layanan & pembayaran.\n" +
-        "5. Klik Print + Simpan. Otomatis tersimpan di tab Riwayat.\n" +
+        "3. Di tab Master Layanan, atur daftar layanan & harga.\n" +
+        "4. Di tab Kasir: isi pelanggan, pilih layanan + qty, klik Test Print untuk coba.\n" +
+        "5. Klik Print + Simpan — struk tercetak dan otomatis masuk Riwayat.\n" +
         "6. Tekan Alt untuk tampil/sembunyi menu Bantuan.",
         "Panduan Pakai", MessageBoxButton.OK, MessageBoxImage.Information);
 

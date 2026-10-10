@@ -93,7 +93,7 @@ object ReceiptTextFormatter {
         b.add(twoCol("Layanan / Produk", "Total"))
         b.add(dash())
         for (it in r.items) {
-            b.add(twoCol(it.name, rupiah(it.price)))
+            b.add(twoCol(it.label, rupiah(it.lineTotal)))
             if (it.desc.isNotBlank()) b.addAll(wrap(it.desc))
         }
         b.add(dash())
