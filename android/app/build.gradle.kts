@@ -27,7 +27,15 @@ android {
                 val f = rootProject.layout.projectDirectory.file("keystore.properties").asFile
                 if (f.exists()) f.inputStream().use { load(it) }
             }
-            fun p(k: String) = (providers.environmentVariable(k).orNull ?: props.getProperty(k))
+            // property key in keystore.properties -> environment variable used by CI
+            val envKeys = mapOf(
+                "storeFile" to "WANGGA_KEYSTORE_FILE",
+                "storePassword" to "WANGGA_STORE_PASSWORD",
+                "keyAlias" to "WANGGA_KEY_ALIAS",
+                "keyPassword" to "WANGGA_KEY_PASSWORD",
+            )
+            fun p(k: String) =
+                (envKeys[k]?.let { providers.environmentVariable(it).orNull } ?: props.getProperty(k))
             storeFile = p("storeFile")?.let { file(rootProject.layout.projectDirectory.file(it)) }
             storePassword = p("storePassword")
             keyAlias = p("keyAlias")
