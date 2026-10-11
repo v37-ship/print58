@@ -256,11 +256,52 @@ fun removeService(name: String) {
         } catch (e: Exception) { "?" }
         if (hasBtPermission()) loadDevices()
         scope.launch {
+            val retired = listOf("Massage Kids", "Inflaren", "Transport PP (HM Care)")
             val seed = listOf(
-                Svc("Massage Kids", "Durasi 60 menit", 135000),
-                Svc("Inflaren", "Durasi 30 menit", 50000),
-                Svc("Transport PP (HM Care)", "Jarak & antar jemput", 15000))
-            withContext(Dispatchers.IO) { seed.forEach { db.svc().upsert(it) } }
+                Svc("Baby Swim", "Durasi 20 menit", 75000),
+                Svc("Baby Massage", "Durasi 30 menit", 125000),
+                Svc("Terapi Infrared & Nebu", "Meringankan bapil baby, durasi 30 menit", 50000),
+                Svc("Kids Massage", "Kids massage + totok wajah, durasi 60 menit", 135000),
+                Svc("Paket Pijat Lengkap Baby SPA", "Durasi 60 menit", 150000),
+                Svc("Pijat Ibu Laktasi & Oksitosin", "Durasi 90 menit", 200000),
+                Svc("Pijat Ibu Hamil", "Durasi 90 menit", 200000),
+                Svc("Pijat Ibu Nifas", "Durasi 90 menit", 150000),
+                Svc("Baby SPA 0-12 bulan", "Durasi 30 menit", 65000),
+                Svc("Baby Treatment", "Baby massage + baby gym + berenang + mandi rempah, 60 menit", 90000),
+                Svc("Kid Treatment Totok", "Kids massage + totok wajah + maskeran, 50 menit", 100000),
+                Svc("Massage Kids Berkebutuhan Khusus", "Durasi 45 menit", 100000),
+                Svc("Kid Treatment Lulur", "Kids massage + lulur + maskeran + berenang, 90 menit", 150000),
+                Svc("Baby Swimming Set", "Berenang + mandi rempah + massage, 60 menit", 100000),
+                Svc("Baby SPA + Mom Treatment", "Baby massage + mandi rempah + mom massage + totok, 90 menit", 180000),
+                Svc("Paket Baby SPA 5x", "Baby massage + gym + berenang + mandi rempah, 1 bulan", 400000),
+                Svc("Kids Party Baby SPA + Mom", "90 menit, min. 3 anak", 150000),
+                Svc("Kids Party Massage Kids", "60 menit, min. 3 anak", 120000),
+                Svc("Kids Party Inflaren + Maskeran", "30 menit, min. 3 anak", 50000),
+                Svc("Full Body Massage Tradisional", "Free pedi + totok wajah, 90 menit", 150000),
+                Svc("Full Body Massage Balinesse", "Modern + stretching, free pedi + totok, 90 menit", 200000),
+                Svc("Tambahan Pijat", "Durasi 30 menit", 30000),
+                Svc("Lulur Buah Segar", "Timun/alpukat/buah naga, 20 menit", 40000),
+                Svc("Lulur Kopi / Cokelat", "Durasi 20 menit", 30000),
+                Svc("Sauna Box 30 mnt", "Durasi 30 menit", 75000),
+                Svc("Sauna Box 45 mnt", "Durasi 45 menit", 90000),
+                Svc("Reflexi + Full Body Massage", "Durasi 90 menit", 150000),
+                Svc("Totok Wajah Intensif", "Free pijat chest + kepala, 30 menit", 60000),
+                Svc("Foot Massage", "Durasi 30 menit", 50000),
+                Svc("Bekam + Warming", "Durasi 30 menit", 50000),
+                Svc("Kerokan", "Durasi 15 menit", 50000),
+                Svc("Cek IVA", "Deteksi ca mulut/rahim, 5 menit", 50000),
+                Svc("Papsmear", "", 500000),
+                Svc("Ratus", "Vagina bersih hygiene, 10 menit", 50000),
+                Svc("Cek Gula Darah", "Durasi 5 menit", 25000),
+                Svc("Cek Kolestrol", "Durasi 5 menit", 25000),
+                Svc("Cek Asam Urat", "Durasi 5 menit", 50000),
+                Svc("Transport PP 0-1 km", "Home care, PP", 5000),
+                Svc("Transport PP 2-3 km", "Home care, PP", 10000),
+                Svc("Transport PP 4-5 km", "Home care, PP", 20000),
+                Svc("Transport PP 6-7 km", "Home care, PP", 25000),
+                Svc("Transport PP 8-9 km", "Home care, PP", 30000),
+                Svc("Transport PP 10-12 km", "Home care, PP", 50000))
+            withContext(Dispatchers.IO) { retired.forEach { db.svc().delete(it) }; seed.forEach { db.svc().upsert(it) } }
             refreshServices()
         }
     }

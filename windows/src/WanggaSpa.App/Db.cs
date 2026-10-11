@@ -9,12 +9,67 @@ public sealed class Db
     readonly string _path;
     public Db(string path) { _path = path; Init(); }
 
+    static readonly string[] RetiredItems = new[]
+    {
+        "Massage Kids",
+        "Inflaren",
+        "Transport PP (HM Care)",
+    };
+
     void SeedServices(SqliteConnection c)
     {
+        foreach (var old in RetiredItems)
+        {
+            var del = new SqliteCommand("DELETE FROM services WHERE name=$n", c);
+            del.Parameters.AddWithValue("$n", old);
+            del.ExecuteNonQuery();
+        }
         foreach (var (n, d, p) in new (string, string, long)[]
-                 { ("Massage Kids", "Durasi 60 menit", 135000),
-                   ("Inflaren", "Durasi 30 menit", 50000),
-                   ("Transport PP (HM Care)", "Jarak & antar jemput", 15000) })
+                 {
+                   ("Baby Swim", "Durasi 20 menit", 75000),
+                   ("Baby Massage", "Durasi 30 menit", 125000),
+                   ("Terapi Infrared & Nebu", "Meringankan bapil baby, durasi 30 menit", 50000),
+                   ("Kids Massage", "Kids massage + totok wajah, durasi 60 menit", 135000),
+                   ("Paket Pijat Lengkap Baby SPA", "Durasi 60 menit", 150000),
+                   ("Pijat Ibu Laktasi & Oksitosin", "Durasi 90 menit", 200000),
+                   ("Pijat Ibu Hamil", "Durasi 90 menit", 200000),
+                   ("Pijat Ibu Nifas", "Durasi 90 menit", 150000),
+                   ("Baby SPA 0-12 bulan", "Durasi 30 menit", 65000),
+                   ("Baby Treatment", "Baby massage + baby gym + berenang + mandi rempah, 60 menit", 90000),
+                   ("Kid Treatment Totok", "Kids massage + totok wajah + maskeran, 50 menit", 100000),
+                   ("Massage Kids Berkebutuhan Khusus", "Durasi 45 menit", 100000),
+                   ("Kid Treatment Lulur", "Kids massage + lulur + maskeran + berenang, 90 menit", 150000),
+                   ("Baby Swimming Set", "Berenang + mandi rempah + massage, 60 menit", 100000),
+                   ("Baby SPA + Mom Treatment", "Baby massage + mandi rempah + mom massage + totok, 90 menit", 180000),
+                   ("Paket Baby SPA 5x", "Baby massage + gym + berenang + mandi rempah, 1 bulan", 400000),
+                   ("Kids Party Baby SPA + Mom", "90 menit, min. 3 anak", 150000),
+                   ("Kids Party Massage Kids", "60 menit, min. 3 anak", 120000),
+                   ("Kids Party Inflaren + Maskeran", "30 menit, min. 3 anak", 50000),
+                   ("Full Body Massage Tradisional", "Free pedi + totok wajah, 90 menit", 150000),
+                   ("Full Body Massage Balinesse", "Modern + stretching, free pedi + totok, 90 menit", 200000),
+                   ("Tambahan Pijat", "Durasi 30 menit", 30000),
+                   ("Lulur Buah Segar", "Timun/alpukat/buah naga, 20 menit", 40000),
+                   ("Lulur Kopi / Cokelat", "Durasi 20 menit", 30000),
+                   ("Sauna Box 30 mnt", "Durasi 30 menit", 75000),
+                   ("Sauna Box 45 mnt", "Durasi 45 menit", 90000),
+                   ("Reflexi + Full Body Massage", "Durasi 90 menit", 150000),
+                   ("Totok Wajah Intensif", "Free pijat chest + kepala, 30 menit", 60000),
+                   ("Foot Massage", "Durasi 30 menit", 50000),
+                   ("Bekam + Warming", "Durasi 30 menit", 50000),
+                   ("Kerokan", "Durasi 15 menit", 50000),
+                   ("Cek IVA", "Deteksi ca mulut/rahim, 5 menit", 50000),
+                   ("Papsmear", "", 500000),
+                   ("Ratus", "Vagina bersih hygiene, 10 menit", 50000),
+                   ("Cek Gula Darah", "Durasi 5 menit", 25000),
+                   ("Cek Kolestrol", "Durasi 5 menit", 25000),
+                   ("Cek Asam Urat", "Durasi 5 menit", 50000),
+                   ("Transport PP 0-1 km", "Home care, PP", 5000),
+                   ("Transport PP 2-3 km", "Home care, PP", 10000),
+                   ("Transport PP 4-5 km", "Home care, PP", 20000),
+                   ("Transport PP 6-7 km", "Home care, PP", 25000),
+                   ("Transport PP 8-9 km", "Home care, PP", 30000),
+                   ("Transport PP 10-12 km", "Home care, PP", 50000)
+                 })
         {
             var cmd = new SqliteCommand("INSERT OR IGNORE INTO services(name,desc,price) VALUES($n,$d,$p)", c);
             cmd.Parameters.AddWithValue("$n", n); cmd.Parameters.AddWithValue("$d", d);
